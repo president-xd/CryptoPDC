@@ -70,7 +70,7 @@ def get_algorithms():
             'name': 'SHA-1',
             'type': 'Hash',
             'output_size': '160-bit',
-            'gpu_supported': True
+            'gpu_supported': False
         },
         {
             'id': 'sha256',
@@ -102,6 +102,22 @@ def get_algorithms():
         }
     ])
 
+@app.route('/api/wordlists', methods=['GET'])
+def get_wordlists():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    wordlists_dir = os.path.join(os.path.dirname(base_dir), 'wordlists')
+    
+    lists = []
+    # Add default
+    lists.append({'id': 'wordlist.txt', 'name': 'Default Wordlist'})
+    
+    if os.path.exists(wordlists_dir):
+        for f in os.listdir(wordlists_dir):
+            if f.endswith('.txt'):
+                lists.append({'id': f, 'name': f})
+    
+    return jsonify(lists)
+
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     """Get all tasks"""
@@ -119,11 +135,16 @@ def submit_task():
     min_len = data.get('min_length', 1)
     max_len = data.get('max_length', 6)
     attack_mode = data.get('attack_mode', 'brute')
+    wordlist = data.get('wordlist', 'wordlist.txt')
     
     # Calculate total keyspace for all lengths
     total_keyspace = 0
-    for length in range(min_len, max_len + 1):
-        total_keyspace += len(charset) ** length
+    if attack_mode == 'brute':
+        for length in range(min_len, max_len + 1):
+            total_keyspace += len(charset) ** length
+    else:
+        # For dictionary or hybrid, keyspace is approximate or file size
+        total_keyspace = 1000000 # dummy value
     
     task = {
         'task_id': task_id,
@@ -135,14 +156,15 @@ def submit_task():
         'progress': 0,
         'result': None,
         'worker_id': None,
-        'backend': 'GPU' if data.get('algorithm') in ['md5', 'sha1', 'sha256'] else 'CPU',
+        'backend': 'GPU' if data.get('algorithm') in ['md5', 'sha256'] else 'CPU',
         'keyspace': {
             'charset': charset,
             'min_length': min_len,
             'max_length': max_len,
             'start': 0,
             'end': total_keyspace,
-            'total': total_keyspace
+            'total': total_keyspace,
+            'wordlist': wordlist
         }
     }
     

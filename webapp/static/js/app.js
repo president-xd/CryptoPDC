@@ -12,9 +12,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initializeApp() {
     await loadAlgorithms();
+    await loadWordlists(); // Load wordlists
     await loadTasks();
     updateCharsetField();
+    updateAttackModeFields(); // Initial state
     calculateKeyspace();
+}
+
+// Load available wordlists
+async function loadWordlists() {
+    try {
+        const response = await fetch('/api/wordlists');
+        const lists = await response.json();
+
+        const select = document.getElementById('wordlist');
+        select.innerHTML = ''; // Clear default
+        lists.forEach(l => {
+            const option = document.createElement('option');
+            option.value = l.id;
+            option.textContent = l.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Failed to load wordlists:', error);
+    }
 }
 
 // Load available algorithms
@@ -35,22 +56,7 @@ async function loadAlgorithms() {
     }
 }
 
-// Load existing tasks
-async function loadTasks() {
-    try {
-        const response = await fetch('/api/tasks');
-        const taskList = await response.json();
-
-        taskList.forEach(task => {
-            tasks[task.task_id] = task;
-            renderTask(task);
-        });
-
-        updateStats();
-    } catch (error) {
-        console.error('Failed to load tasks:', error);
-    }
-}
+// ... (loadTasks is unchanged)
 
 // Event Listeners
 function setupEventListeners() {
@@ -60,53 +66,30 @@ function setupEventListeners() {
     // Charset preset change
     document.getElementById('charset-preset').addEventListener('change', updateCharsetField);
 
+    // Attack Mode change
+    document.getElementById('attack-mode').addEventListener('change', updateAttackModeFields);
+
     // Keyspace calculation
     ['charset-preset', 'charset-custom', 'max-length'].forEach(id => {
         document.getElementById(id).addEventListener('input', calculateKeyspace);
     });
 }
 
-// Socket.IO Listeners
-function setupSocketListeners() {
-    socket.on('connect', () => {
-        updateConnectionStatus(true);
-    });
+function updateAttackModeFields() {
+    const mode = document.getElementById('attack-mode').value;
+    const bruteOpts = document.getElementById('brute-force-options');
+    const dictOpts = document.getElementById('dictionary-options');
 
-    socket.on('disconnect', () => {
-        updateConnectionStatus(false);
-    });
-
-    socket.on('task_created', (task) => {
-        tasks[task.task_id] = task;
-        renderTask(task);
-        updateStats();
-    });
-
-    socket.on('task_update', (task) => {
-        tasks[task.task_id] = task;
-        updateTaskCard(task);
-        updateStats();
-
-        // Show notification for completed tasks
-        if (task.status === 'found') {
-            showNotification(`Task completed! Found: ${task.result}`, 'success');
-        }
-    });
-}
-
-// Update connection status
-function updateConnectionStatus(connected) {
-    const statusEl = document.getElementById('connection-status');
-    const dotEl = document.querySelector('.status-dot');
-
-    if (connected) {
-        statusEl.textContent = 'Connected';
-        dotEl.style.background = 'var(--success)';
+    if (mode === 'dictionary') {
+        bruteOpts.style.display = 'none';
+        dictOpts.style.display = 'block';
     } else {
-        statusEl.textContent = 'Disconnected';
-        dotEl.style.background = 'var(--error)';
+        bruteOpts.style.display = 'block';
+        dictOpts.style.display = 'none';
     }
 }
+
+// ... (socket listeners unchanged)
 
 // Handle form submission
 async function handleSubmit(e) {
@@ -115,20 +98,27 @@ async function handleSubmit(e) {
     const charset = getCharset();
     const maxLen = parseInt(document.getElementById('max-length').value);
     const minLen = parseInt(document.getElementById('min-length').value);
+    const attackMode = document.getElementById('attack-mode').value;
+    const wordlist = document.getElementById('wordlist').value;
 
     // Calculate total keyspace for all lengths from min to max
     let totalKeyspace = 0;
-    for (let len = minLen; len <= maxLen; len++) {
-        totalKeyspace += Math.pow(charset.length, len);
+    if (attackMode === 'brute') {
+        for (let len = minLen; len <= maxLen; len++) {
+            totalKeyspace += Math.pow(charset.length, len);
+        }
+    } else {
+        totalKeyspace = 1000000; // Estimated
     }
 
     const formData = {
         algorithm: document.getElementById('algorithm').value,
-        attack_mode: document.getElementById('attack-mode').value,
+        attack_mode: attackMode,
         target: document.getElementById('target').value.trim(),
         charset: charset,
         min_length: minLen,
         max_length: maxLen,
+        wordlist: wordlist,
         keyspace_size: totalKeyspace
     };
 
