@@ -3,6 +3,7 @@
 #include "cryptopdc/algorithms/hash/md5.hpp"
 #include "cryptopdc/algorithms/hash/sha1.hpp"
 #include "cryptopdc/algorithms/hash/sha256.hpp"
+#include "cryptopdc/cpu_cracker.hpp"
 #include "cryptopdc/cuda/hash/md5_kernel.cuh"
 #include "cryptopdc/cuda/hash/sha256_kernel.cuh"
 #include "cryptopdc/common/types.hpp"
@@ -120,6 +121,17 @@ PYBIND11_MODULE(cryptopdc_bindings, m) {
         char output[64];
         utils::index_to_key(index, output, charset.c_str(), charset.length(), key_len);
         return std::string(output, key_len);
+    });
+
+    // CPU Crackers
+    m.def("crack_dictionary", [](const std::string& algo, const std::string& target, const std::string& wordlist) {
+        auto result = cpu::CPUCracker::crack_dictionary(algo, target, wordlist);
+        return std::make_tuple(result.found, result.key, result.iterations);
+    });
+
+    m.def("crack_brute_force_cpu", [](const std::string& algo, const std::string& target, const std::string& charset, int min_len, int max_len) {
+        auto result = cpu::CPUCracker::crack_brute_force(algo, target, charset, min_len, max_len);
+        return std::make_tuple(result.found, result.key, result.iterations);
     });
 
     // CUDA Crackers

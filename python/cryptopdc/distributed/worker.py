@@ -72,7 +72,36 @@ class Worker:
             start_time = time.time()
             
             if attack_mode == 'dictionary':
-                found, result, total_iterations = self.crack_dictionary(algo, target)
+                # Use C++ Dictionary Cracker if available
+                if hasattr(core, 'crack_dictionary'):
+                    # Use absolute path for wordlists
+                    # app.py should send 'wordlist_path' or filename.
+                    # For now, default to 'common.txt' if not specified, or use the one in task
+                    # But task only has 'attack_mode'.
+                    # Let's check if task has 'wordlist' param, else use default.
+                    # We'll use the 'wordlist.txt' we fixed, or try to interpret 'keyspace' param?
+                    # The prompt said "add different cracking wordlists".
+                    # Let's assume for now we use the configured wordlist.
+                    
+                    # We'll try a list of known wordlists or the default "wordlist.txt"
+                    # Ideally, app.py sends the path.
+                    # For now, let's keep using the fixed "wordlist.txt" path but passed to C++
+                    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+                    
+                    # Check which wordlist to use. Maybe task['keyspace']['wordlist']?
+                    wordlist_name = task.get('keyspace', {}).get('wordlist', 'wordlist.txt')
+                    wordlist_path = os.path.join(base_dir, wordlist_name)
+                    # If not in base_dir, try in wordlists/
+                    if not os.path.exists(wordlist_path):
+                        wordlist_path = os.path.join(base_dir, "wordlists", wordlist_name)
+                    
+                    if not os.path.exists(wordlist_path):
+                        wordlist_path = os.path.join(base_dir, "wordlist.txt")
+
+                    print(f"Using C++ Dictionary Cracker on {wordlist_path}")
+                    found, result, total_iterations = core.crack_dictionary(algo, target, wordlist_path)
+                else:
+                    found, result, total_iterations = self.crack_dictionary(algo, target)
             else:
                 # Brute Force: Iterate through lengths
                 for length in range(min_length, max_length + 1):
@@ -87,25 +116,28 @@ class Worker:
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
-                    elif algo == "sha256":
-                        if hasattr(core, 'cuda_crack_sha256'):
-                             found, result = core.cuda_crack_sha256(
-                                target, charset, length, 0, iter_count, self.device_id
-                            )
-                             total_iterations += iter_count
+                    elif algo == "sha256" and hasattr(core, 'cuda_crack_sha256'):
+                        # Use CUDA
+                        found, result = core.cuda_crack_sha256(
+                            target, charset, length, 0, iter_count, self.device_id
+                        )
+                        total_iterations += iter_count
+                    else:
+                        # CPU Fallback (C++ or Python)
+                        if hasattr(core, 'crack_brute_force_cpu'):
+                            # C++ implementation
+                            f, r, c = core.crack_brute_force_cpu(algo, target, charset, length, length)
+                            total_iterations += c
+                            if f:
+                                found = True
+                                result = r
                         else:
+                            # Python fallback
                             f, r, c = self.crack_cpu(algo, target, charset, length, 0, iter_count)
                             total_iterations += c
                             if f:
                                 found = True
                                 result = r
-                    else:
-                        # CPU Fallback
-                        f, r, c = self.crack_cpu(algo, target, charset, length, 0, iter_count)
-                        total_iterations += c
-                        if f:
-                            found = True
-                            result = r
 
             duration = time.time() - start_time
             
