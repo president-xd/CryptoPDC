@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CryptoPDC - Distributed Cryptanalysis Framework</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>CryptoPDC</h1>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot"></span>
+                <span id="connection-status">Connected</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Task Submission Panel -->
+            <section class="panel task-submission">
+                <h2 class="panel-title">
+                    Submit Cracking Task
+                </h2>
+
+                <form id="task-form" class="form">
+                    <div class="form-group">
+                        <label for="algorithm">Algorithm</label>
+                        <select id="algorithm" name="algorithm" class="input-field" required>
+                            <option value="">Select Algorithm...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="attack-mode">Attack Mode</label>
+                        <select id="attack-mode" name="attack-mode" class="input-field" required>
+                            <option value="brute">Brute Force</option>
+                            <option value="dictionary">Dictionary Attack</option>
+                            <option value="hybrid">Hybrid (Dictionary + Rules)</option>
+                            <option value="mask">Mask Attack</option>
+                        </select>
+                        <small class="help-text">Brute force tries all combinations, dictionary uses wordlists</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="target">Target Hash</label>
+                        <input type="text" id="target" name="target" class="input-field"
+                            placeholder="e.g., 5d41402abc4b2a76b9719d911017c592" required>
+                        <small class="help-text">Enter the hash you want to crack</small>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="charset">Character Set</label>
+                            <select id="charset-preset" class="input-field">
+                                <option value="abcdefghijklmnopqrstuvwxyz">Lowercase (a-z)</option>
+                                <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">Uppercase (A-Z)</option>
+                                <option value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ">Mixed Case</option>
+                                <option value="abcdefghijklmnopqrstuvwxyz0123456789">Alphanumeric</option>
+                                <option value="custom">Custom...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="charset-custom">Custom Charset</label>
+                            <input type="text" id="charset-custom" class="input-field"
+                                placeholder="Enter custom characters" disabled>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="min-length">Min Length</label>
+                            <input type="number" id="min-length" class="input-field" value="1" min="1" max="12">
+                        </div>
+                        <div class="form-group">
+                            <label for="max-length">Max Length</label>
+                            <input type="number" id="max-length" class="input-field" value="6" min="1" max="12">
+                        </div>
+                    </div>
+
+                    <div class="keyspace-info">
+                        <span id="keyspace-size">Keyspace: Calculating...</span>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Start Attack
+                    </button>
+                </form>
+            </section>
+
+            <!-- Active Tasks -->
+            <section class="panel tasks-panel">
+                <h2 class="panel-title">
+                    Active Tasks
+                    <span class="badge" id="task-count">0</span>
+                </h2>
+
+                <div id="tasks-container" class="tasks-container">
+                    <div class="empty-state">
+                        <p>No active tasks</p>
+                        <small>Submit a task above to get started</small>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statistics -->
+            <section class="panel stats-panel">
+                <h2 class="panel-title">
+                    System Statistics
+                </h2>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-tasks">0</div>
+                        <div class="stat-label">Total Tasks</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="completed-tasks">0</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="success-rate">0%</div>
+                        <div class="stat-label">Success Rate</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="active-workers">0</div>
+                        <div class="stat-label">Active Workers</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>CryptoPDC v1.0.0 | Professional Distributed Cryptanalysis Framework</p>
+            <p class="footer-warning">WARNING: For authorized security research and educational purposes only</p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+
+</html>
