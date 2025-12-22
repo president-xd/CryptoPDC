@@ -8,7 +8,7 @@ mkdir -p build/lib
 mkdir -p build/obj
 
 # Compiler flags
-CXX_FLAGS="-O3 -std=c++17 -fPIC -Icore/include -Icuda/include"
+CXX_FLAGS="-O3 -std=c++17 -fPIC -Icore/include -Icuda/include -fopenmp"
 NVCC_FLAGS="-O3 -std=c++17 -Xcompiler -fPIC -Icore/include -Icuda/include"
 
 # Python flags
@@ -28,6 +28,7 @@ g++ $CXX_FLAGS -c core/src/common/types.cpp -o build/obj/types.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/md5.cpp -o build/obj/md5.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha1.cpp -o build/obj/sha1.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha256.cpp -o build/obj/sha256.o
+g++ $CXX_FLAGS -c core/src/cpu_cracker.cpp -o build/obj/cpu_cracker.o
 
 # 3. Compile Python Bindings
 echo "Compiling Python Bindings..."
@@ -35,7 +36,7 @@ g++ $CXX_FLAGS $PY_INCLUDES -c python/cryptopdc/bindings/core_bindings.cpp -o bu
 
 # 4. Link everything into a shared object
 echo "Linking..."
-g++ -shared -o python/cryptopdc/bindings/cryptopdc_bindings$PY_SUFFIX \
+g++ -shared -fopenmp -o python/cryptopdc/bindings/cryptopdc_bindings$PY_SUFFIX \
     build/obj/*.o \
     -L/usr/local/cuda/lib64 -lcudart
 
