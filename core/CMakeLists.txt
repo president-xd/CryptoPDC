@@ -5,10 +5,20 @@ set(CORE_SOURCES
     src/common/types.cpp
     
     # Hash algorithms (CPU implementations)
+    src/algorithms/hash/md2.cpp
+    src/algorithms/hash/md4.cpp
     src/algorithms/hash/md5.cpp
+    src/algorithms/hash/md6.cpp
+    src/algorithms/hash/ntlm.cpp
     src/algorithms/hash/sha1.cpp
+    src/algorithms/hash/sha224.cpp
     src/algorithms/hash/sha256.cpp
+    src/algorithms/hash/sha384.cpp
     src/algorithms/hash/sha512.cpp
+    src/algorithms/hash/sha3.cpp
+    src/algorithms/hash/ripemd.cpp
+    src/algorithms/hash/checksum.cpp
+    src/algorithms/hash/whirlpool.cpp
     
     # Symmetric encryption (CPU implementations)
     src/algorithms/symmetric/aes.cpp
