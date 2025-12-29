@@ -1,0 +1,5 @@
+if(EXISTS "/home/president/CryptoPDC/build/tests/test_hash_algorithms[1]_tests.cmake")
+  include("/home/president/CryptoPDC/build/tests/test_hash_algorithms[1]_tests.cmake")
+else()
+  add_test(test_hash_algorithms_NOT_BUILT test_hash_algorithms_NOT_BUILT)
+endif()

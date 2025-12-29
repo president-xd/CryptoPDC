@@ -1,0 +1,1 @@
+-I/home/president/CryptoPDC/core/include -I/home/president/CryptoPDC/cuda/include -I/home/president/CryptoPDC/tests/cuda -isystem "/home/president/CryptoPDC/build/_deps/googletest-src/googletest/include" -isystem "/home/president/CryptoPDC/build/_deps/googletest-src/googletest"

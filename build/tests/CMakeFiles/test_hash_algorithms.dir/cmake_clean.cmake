@@ -1,0 +1,40 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/test_hash_algorithms.dir/cpp/main.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/main.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_checksum.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_checksum.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md2.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md2.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md4.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md4.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md5.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md5.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md6.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_md6.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_ntlm.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_ntlm.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_ripemd.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_ripemd.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha1.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha1.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha224.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha224.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha256.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha256.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha3.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha3.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha384.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha384.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha512.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_sha512.cpp.o.d"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_whirlpool.cpp.o"
+  "CMakeFiles/test_hash_algorithms.dir/cpp/test_whirlpool.cpp.o.d"
+  "test_hash_algorithms"
+  "test_hash_algorithms.pdb"
+  "test_hash_algorithms[1]_tests.cmake"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/test_hash_algorithms.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
