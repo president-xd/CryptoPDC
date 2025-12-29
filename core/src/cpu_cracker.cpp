@@ -2,6 +2,7 @@
 #include "cryptopdc/algorithms/hash/md5.hpp"
 #include "cryptopdc/algorithms/hash/sha1.hpp"
 #include "cryptopdc/algorithms/hash/sha256.hpp"
+#include "cryptopdc/algorithms/hash/sha512.hpp"
 #include "cryptopdc/common/utils.hpp"
 #include <fstream>
 #include <iostream>
@@ -20,6 +21,7 @@ std::unique_ptr<HashAlgorithm> create_algorithm(const std::string& name) {
     if (name == "md5") return std::make_unique<MD5>();
     if (name == "sha1") return std::make_unique<SHA1>();
     if (name == "sha256") return std::make_unique<SHA256>();
+    if (name == "sha512") return std::make_unique<SHA512>();
     return nullptr;
 }
 

@@ -3,9 +3,12 @@
 #include "cryptopdc/algorithms/hash/md5.hpp"
 #include "cryptopdc/algorithms/hash/sha1.hpp"
 #include "cryptopdc/algorithms/hash/sha256.hpp"
+#include "cryptopdc/algorithms/hash/sha512.hpp"
 #include "cryptopdc/cpu_cracker.hpp"
 #include "cryptopdc/cuda/hash/md5_kernel.cuh"
+#include "cryptopdc/cuda/hash/sha1_kernel.cuh"
 #include "cryptopdc/cuda/hash/sha256_kernel.cuh"
+#include "cryptopdc/cuda/hash/sha512_kernel.cuh"
 #include "cryptopdc/common/types.hpp"
 #include "cryptopdc/common/utils.hpp"
 
@@ -89,6 +92,80 @@ std::pair<bool, std::string> cuda_crack_sha256(const std::string& target_hash_he
     return {false, ""};
 }
 
+// Helper to launch SHA-1 CUDA crack
+std::pair<bool, std::string> cuda_crack_sha1(const std::string& target_hash_hex, 
+                                            const std::string& charset,
+                                            int key_length,
+                                            uint64_t start_index,
+                                            uint64_t count,
+                                            int device_id) {
+    auto target_bytes = utils::hex_to_bytes(target_hash_hex);
+    if (target_bytes.size() != 20) {
+        throw std::runtime_error("Invalid SHA-1 hash length (expected 40 hex characters / 20 bytes)");
+    }
+
+    char result_key[64];
+    int found = 0;
+    
+    cudaError_t err = cuda::hash::launch_sha1_crack(
+        target_bytes.data(),
+        start_index,
+        count,
+        charset.c_str(),
+        charset.length(),
+        key_length,
+        result_key,
+        &found,
+        device_id
+    );
+
+    if (err != cudaSuccess) {
+        throw std::runtime_error("CUDA execution failed");
+    }
+
+    if (found) {
+        return {true, std::string(result_key, key_length)};
+    }
+    return {false, ""};
+}
+
+// Helper to launch SHA-512 CUDA crack
+std::pair<bool, std::string> cuda_crack_sha512(const std::string& target_hash_hex, 
+                                              const std::string& charset,
+                                              int key_length,
+                                              uint64_t start_index,
+                                              uint64_t count,
+                                              int device_id) {
+    auto target_bytes = utils::hex_to_bytes(target_hash_hex);
+    if (target_bytes.size() != 64) {
+        throw std::runtime_error("Invalid SHA-512 hash length (expected 128 hex characters / 64 bytes)");
+    }
+
+    char result_key[64];
+    int found = 0;
+    
+    cudaError_t err = cuda::hash::launch_sha512_crack(
+        target_bytes.data(),
+        start_index,
+        count,
+        charset.c_str(),
+        charset.length(),
+        key_length,
+        result_key,
+        &found,
+        device_id
+    );
+
+    if (err != cudaSuccess) {
+        throw std::runtime_error("CUDA execution failed");
+    }
+
+    if (found) {
+        return {true, std::string(result_key, key_length)};
+    }
+    return {false, ""};
+}
+
 PYBIND11_MODULE(cryptopdc_bindings, m) {
     m.doc() = "CryptoPDC Core C++ Bindings";
 
@@ -107,6 +184,11 @@ PYBIND11_MODULE(cryptopdc_bindings, m) {
         .def(py::init<>())
         .def("hash", (std::vector<uint8_t> (algorithms::hash::SHA256::*)(const std::string&) const) &algorithms::hash::SHA256::hash)
         .def("verify", &algorithms::hash::SHA256::verify);
+
+    py::class_<algorithms::hash::SHA512>(m, "SHA512")
+        .def(py::init<>())
+        .def("hash", (std::vector<uint8_t> (algorithms::hash::SHA512::*)(const std::string&) const) &algorithms::hash::SHA512::hash)
+        .def("verify", &algorithms::hash::SHA512::verify);
         
     // Utils
     m.def("bytes_to_hex", [](const std::vector<uint8_t>& data) {
@@ -138,8 +220,16 @@ PYBIND11_MODULE(cryptopdc_bindings, m) {
     m.def("cuda_crack_md5", &cuda_crack_md5, 
           py::arg("target"), py::arg("charset"), py::arg("length"), 
           py::arg("start"), py::arg("count"), py::arg("device_id") = 0);
+    
+    m.def("cuda_crack_sha1", &cuda_crack_sha1, 
+          py::arg("target"), py::arg("charset"), py::arg("length"), 
+          py::arg("start"), py::arg("count"), py::arg("device_id") = 0);
           
     m.def("cuda_crack_sha256", &cuda_crack_sha256, 
+          py::arg("target"), py::arg("charset"), py::arg("length"), 
+          py::arg("start"), py::arg("count"), py::arg("device_id") = 0);
+    
+    m.def("cuda_crack_sha512", &cuda_crack_sha512, 
           py::arg("target"), py::arg("charset"), py::arg("length"), 
           py::arg("start"), py::arg("count"), py::arg("device_id") = 0);
 }

@@ -81,7 +81,7 @@ def get_algorithms():
             'name': 'SHA-1',
             'type': 'Hash',
             'output_size': '160-bit',
-            'gpu_supported': False
+            'gpu_supported': True
         },
         {
             'id': 'sha256',
@@ -95,7 +95,7 @@ def get_algorithms():
             'name': 'SHA-512',
             'type': 'Hash',
             'output_size': '512-bit',
-            'gpu_supported': False
+            'gpu_supported': True
         },
         {
             'id': 'aes',
@@ -184,7 +184,7 @@ def submit_task():
         'progress': 0,
         'result': None,
         'worker_id': None,
-        'backend': 'GPU' if data.get('algorithm') in ['md5', 'sha256'] else 'CPU',
+        'backend': 'GPU' if data.get('algorithm') in ['md5', 'sha1', 'sha256', 'sha512'] else 'CPU',
         'keyspace': {
             'charset': charset,
             'min_length': min_len,

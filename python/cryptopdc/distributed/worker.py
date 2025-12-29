@@ -111,14 +111,26 @@ class Worker:
                     iter_count = len(charset) ** length
                     
                     if algo == "md5":
-                        # Use CUDA
+                        # Use CUDA for MD5
                         found, result = core.cuda_crack_md5(
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
+                    elif algo == "sha1" and hasattr(core, 'cuda_crack_sha1'):
+                        # Use CUDA for SHA-1
+                        found, result = core.cuda_crack_sha1(
+                            target, charset, length, 0, iter_count, self.device_id
+                        )
+                        total_iterations += iter_count
                     elif algo == "sha256" and hasattr(core, 'cuda_crack_sha256'):
-                        # Use CUDA
+                        # Use CUDA for SHA-256
                         found, result = core.cuda_crack_sha256(
+                            target, charset, length, 0, iter_count, self.device_id
+                        )
+                        total_iterations += iter_count
+                    elif algo == "sha512" and hasattr(core, 'cuda_crack_sha512'):
+                        # Use CUDA for SHA-512
+                        found, result = core.cuda_crack_sha512(
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count

@@ -19,7 +19,9 @@ PY_SUFFIX=$(python3-config --extension-suffix)
 echo "Compiling CUDA kernels..."
 # nvcc $NVCC_FLAGS -c cuda/src/common.cu -o build/obj/common_cu.o
 nvcc $NVCC_FLAGS -c cuda/src/hash/md5_kernel.cu -o build/obj/md5_kernel.o
+nvcc $NVCC_FLAGS -c cuda/src/hash/sha1_kernel.cu -o build/obj/sha1_kernel.o
 nvcc $NVCC_FLAGS -c cuda/src/hash/sha256_kernel.cu -o build/obj/sha256_kernel.o
+nvcc $NVCC_FLAGS -c cuda/src/hash/sha512_kernel.cu -o build/obj/sha512_kernel.o
 
 # 2. Compile C++ Core
 echo "Compiling C++ Core..."
@@ -28,6 +30,7 @@ g++ $CXX_FLAGS -c core/src/common/types.cpp -o build/obj/types.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/md5.cpp -o build/obj/md5.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha1.cpp -o build/obj/sha1.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha256.cpp -o build/obj/sha256.o
+g++ $CXX_FLAGS -c core/src/algorithms/hash/sha512.cpp -o build/obj/sha512.o
 g++ $CXX_FLAGS -c core/src/cpu_cracker.cpp -o build/obj/cpu_cracker.o
 
 # 3. Compile Python Bindings

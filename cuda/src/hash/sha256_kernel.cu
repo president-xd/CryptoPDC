@@ -204,23 +204,38 @@ cudaError_t launch_sha256_crack(
     
     // Launch configuration
     int threads_per_block = 256;
-    uint64_t total_blocks = (count + threads_per_block - 1) / threads_per_block;
-    
-    // Limit blocks to CUDA's maximum grid dimension
     int max_blocks = 65535;
-    int blocks = (total_blocks > max_blocks) ? max_blocks : static_cast<int>(total_blocks);
+    uint64_t chunk_size = static_cast<uint64_t>(max_blocks) * threads_per_block;
     
-    // Launch kernel
-    sha256_crack_kernel<<<blocks, threads_per_block>>>(
-        d_target_hash, start_index, count, d_charset, charset_len,
-        key_length, d_result_key, d_found_flag
-    );
+    // Initialize found flag
+    *found_flag = 0;
     
-    CUDA_CHECK(cudaGetLastError());
-    CUDA_CHECK(cudaDeviceSynchronize());
+    // Process keyspace in chunks
+    uint64_t processed = 0;
+    while (processed < count && !(*found_flag)) {
+        uint64_t remaining = count - processed;
+        uint64_t current_chunk = (remaining > chunk_size) ? chunk_size : remaining;
+        uint64_t current_start = start_index + processed;
+        
+        uint64_t total_blocks = (current_chunk + threads_per_block - 1) / threads_per_block;
+        int blocks = (total_blocks > max_blocks) ? max_blocks : static_cast<int>(total_blocks);
+        
+        // Launch kernel for this chunk
+        sha256_crack_kernel<<<blocks, threads_per_block>>>(
+            d_target_hash, current_start, current_chunk, d_charset, charset_len,
+            key_length, d_result_key, d_found_flag
+        );
+        
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
+        
+        // Check if found
+        CUDA_CHECK(cudaMemcpy(found_flag, d_found_flag, sizeof(int), cudaMemcpyDeviceToHost));
+        
+        processed += current_chunk;
+    }
     
-    // Copy results back
-    CUDA_CHECK(cudaMemcpy(found_flag, d_found_flag, sizeof(int), cudaMemcpyDeviceToHost));
+    // Copy result if found
     if (*found_flag) {
         CUDA_CHECK(cudaMemcpy(result_key, d_result_key, 64, cudaMemcpyDeviceToHost));
     }
