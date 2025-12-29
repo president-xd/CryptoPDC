@@ -63,8 +63,12 @@ class Worker:
             min_length = keyspace.get('min_length', 1)
             max_length = keyspace.get('max_length', 5)
             
-            # Determine if we should use GPU
-            gpu_supported = algo in ['md5', 'sha1', 'sha256', 'sha512']
+            # For AES, get the plaintext needed for cracking
+            plaintext = task.get('plaintext', '')
+            aes_key_size = task.get('aes_key_size', 128)  # 128, 192, or 256
+            
+            # Determine if we should use GPU (now includes AES variants)
+            gpu_supported = algo in ['md5', 'sha1', 'sha256', 'sha512', 'aes']
             use_gpu = (backend_selection == 'gpu' or (backend_selection == 'auto' and gpu_supported)) and backend_selection != 'cpu'
             
             print(f"Backend: {backend_selection} -> Using {'GPU' if use_gpu else 'CPU'}")
@@ -142,6 +146,34 @@ class Worker:
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
+                    elif use_gpu and algo == "aes":
+                        # Use CUDA for AES - generate candidate keys from charset
+                        # For AES, we need to generate keys of appropriate length
+                        # AES-128: 16 bytes (32 hex chars), AES-192: 24 bytes (48 hex), AES-256: 32 bytes (64 hex)
+                        key_bytes = aes_key_size // 8  # 16, 24, or 32 bytes
+                        key_hex_len = key_bytes * 2  # hex string length
+                        
+                        # Generate candidate keys - for brute force, we generate based on charset length
+                        # Note: For proper key cracking, you'd want to use a dictionary or generate proper key candidates
+                        candidates = []
+                        for i in range(min(iter_count, 100000)):  # Limit batch size
+                            key_str = core.index_to_key(i, charset, length)
+                            # Pad or hash to get proper key length - use the key directly padded with zeros
+                            key_hex = key_str.encode().hex()
+                            # Pad to required length with zeros
+                            key_hex = key_hex.ljust(key_hex_len, '0')[:key_hex_len]
+                            candidates.append(key_hex)
+                        
+                        if aes_key_size == 128 and hasattr(core, 'cuda_crack_aes128'):
+                            result = core.cuda_crack_aes128(plaintext, target, candidates)
+                            found = len(result) > 0
+                        elif aes_key_size == 192 and hasattr(core, 'cuda_crack_aes192'):
+                            result = core.cuda_crack_aes192(plaintext, target, candidates)
+                            found = len(result) > 0
+                        elif aes_key_size == 256 and hasattr(core, 'cuda_crack_aes256'):
+                            result = core.cuda_crack_aes256(plaintext, target, candidates)
+                            found = len(result) > 0
+                        total_iterations += len(candidates)
                     else:
                         # CPU Fallback (C++ with OpenMP or Python)
                         if hasattr(core, 'crack_brute_force_cpu'):
