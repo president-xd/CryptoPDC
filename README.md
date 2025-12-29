@@ -75,29 +75,49 @@ git clone https://github.com/cryptopdc/cryptopdc.git
 cd cryptopdc
 ```
 
-### 2. Build C++ Core and CUDA Kernels
+### 2. Build with CMake (Recommended)
 ```bash
-mkdir build && cd build
+# Quick build using the build script
+./scripts/build.sh
+
+# Or manually with CMake
+mkdir -p build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 make -j$(nproc)
-sudo make install
 cd ..
 ```
+
+#### Build Options
+```bash
+# Clean build
+./scripts/build.sh clean
+
+# Debug build
+./scripts/build.sh debug
+
+# Specify parallel jobs
+./scripts/build.sh -j4
+```
+
+#### CMake Options
+| Option | Default | Description |
+|--------|---------|-------------|
+| `BUILD_PYTHON_BINDINGS` | ON | Build Python bindings with pybind11 |
+| `ENABLE_OPENMP` | ON | Enable OpenMP for CPU parallelization |
+| `BUILD_TESTING` | OFF | Build unit tests (requires Google Test) |
+| `BUILD_BENCHMARKS` | OFF | Build performance benchmarks |
 
 ### 3. Install Python Dependencies
 ```bash
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
-cd python
-pip install -e .
-cd ..
 ```
 
-### 4. Install Frontend Dependencies
+### 4. Verify Installation
 ```bash
-cd frontend
-npm install
-npm run build
-cd ..
+export PYTHONPATH=$(pwd)/python:$PYTHONPATH
+python3 -c "from cryptopdc.bindings import cryptopdc_bindings; print('✓ CryptoPDC installed successfully')"
 ```
 
 ## 🚀 Quick Start
