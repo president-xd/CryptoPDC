@@ -56,11 +56,18 @@ class Worker:
             algo = task.get('algorithm')
             target = task.get('target')
             attack_mode = task.get('attack_mode', 'brute')
+            backend_selection = task.get('backend_selection', 'auto')  # User's choice: auto, gpu, cpu
             
             keyspace = task.get('keyspace', {})
             charset = keyspace.get('charset', 'abcdefghijklmnopqrstuvwxyz')
             min_length = keyspace.get('min_length', 1)
             max_length = keyspace.get('max_length', 5)
+            
+            # Determine if we should use GPU
+            gpu_supported = algo in ['md5', 'sha1', 'sha256', 'sha512']
+            use_gpu = (backend_selection == 'gpu' or (backend_selection == 'auto' and gpu_supported)) and backend_selection != 'cpu'
+            
+            print(f"Backend: {backend_selection} -> Using {'GPU' if use_gpu else 'CPU'}")
             
             if not target:
                 print("Invalid task parameters")
@@ -110,34 +117,35 @@ class Worker:
                     print(f"Checking length {length}...")
                     iter_count = len(charset) ** length
                     
-                    if algo == "md5":
+                    # Check if GPU should be used and is available for this algorithm
+                    if use_gpu and algo == "md5" and hasattr(core, 'cuda_crack_md5'):
                         # Use CUDA for MD5
                         found, result = core.cuda_crack_md5(
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
-                    elif algo == "sha1" and hasattr(core, 'cuda_crack_sha1'):
+                    elif use_gpu and algo == "sha1" and hasattr(core, 'cuda_crack_sha1'):
                         # Use CUDA for SHA-1
                         found, result = core.cuda_crack_sha1(
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
-                    elif algo == "sha256" and hasattr(core, 'cuda_crack_sha256'):
+                    elif use_gpu and algo == "sha256" and hasattr(core, 'cuda_crack_sha256'):
                         # Use CUDA for SHA-256
                         found, result = core.cuda_crack_sha256(
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
-                    elif algo == "sha512" and hasattr(core, 'cuda_crack_sha512'):
+                    elif use_gpu and algo == "sha512" and hasattr(core, 'cuda_crack_sha512'):
                         # Use CUDA for SHA-512
                         found, result = core.cuda_crack_sha512(
                             target, charset, length, 0, iter_count, self.device_id
                         )
                         total_iterations += iter_count
                     else:
-                        # CPU Fallback (C++ or Python)
+                        # CPU Fallback (C++ with OpenMP or Python)
                         if hasattr(core, 'crack_brute_force_cpu'):
-                            # C++ implementation
+                            # C++ implementation with OpenMP
                             f, r, c = core.crack_brute_force_cpu(algo, target, charset, length, length)
                             total_iterations += c
                             if f:

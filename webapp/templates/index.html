@@ -56,6 +56,17 @@
                         <small class="help-text">Enter the hash you want to crack</small>
                     </div>
 
+                    <!-- Backend Selection (CPU/GPU) -->
+                    <div id="backend-options" class="form-group">
+                        <label for="backend">Processing Backend</label>
+                        <select id="backend" name="backend" class="input-field">
+                            <option value="auto">Auto (GPU if available)</option>
+                            <option value="gpu">GPU (CUDA)</option>
+                            <option value="cpu">CPU (OpenMP)</option>
+                        </select>
+                        <small class="help-text" id="backend-help">GPU is faster for supported algorithms</small>
+                    </div>
+
                     <!-- AES Options -->
                     <div id="aes-options" class="form-group" style="display: none;">
                         <label for="aes-key-size">AES Key Size</label>

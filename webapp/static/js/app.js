@@ -174,12 +174,24 @@ function updateAttackModeFields() {
 function updateAlgorithmOptions() {
     const algo = document.getElementById('algorithm').value;
     const aesOpts = document.getElementById('aes-options');
+    const backendHelp = document.getElementById('backend-help');
+    const backendSelect = document.getElementById('backend');
     
     // Show AES options for AES algorithms
     if (algo && algo.toLowerCase().startsWith('aes')) {
         aesOpts.style.display = 'block';
     } else {
         aesOpts.style.display = 'none';
+    }
+    
+    // Update backend help text based on GPU support
+    const gpuSupported = ['md5', 'sha1', 'sha256', 'sha512'].includes(algo);
+    if (gpuSupported) {
+        backendHelp.textContent = `GPU acceleration available for ${algo.toUpperCase()}`;
+        backendHelp.style.color = '#10b981';  // Green
+    } else {
+        backendHelp.textContent = `GPU not available for ${algo ? algo.toUpperCase() : 'this algorithm'} - will use CPU`;
+        backendHelp.style.color = '#f59e0b';  // Yellow/warning
     }
 }
 
@@ -203,6 +215,8 @@ async function handleSubmit(e) {
         totalKeyspace = 1000000; // Estimated
     }
 
+    const backendSelection = document.getElementById('backend').value;
+
     const formData = {
         algorithm: document.getElementById('algorithm').value,
         attack_mode: attackMode,
@@ -211,7 +225,8 @@ async function handleSubmit(e) {
         min_length: minLen,
         max_length: maxLen,
         wordlist: wordlist,
-        keyspace_size: totalKeyspace
+        keyspace_size: totalKeyspace,
+        backend: backendSelection
     };
 
     // Add AES key size if AES algorithm is selected
@@ -338,6 +353,7 @@ function updateTaskCard(task) {
 
 // Generate task HTML
 function getTaskHTML(task) {
+    console.log('Task backend value:', task.backend, 'Full task:', task);
     const statusClass = `status-${task.status}`;
     const statusText = task.status.toUpperCase();
     const backend = task.backend || 'CPU';

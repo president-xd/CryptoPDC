@@ -156,6 +156,7 @@ def submit_task():
     attack_mode = data.get('attack_mode', 'brute')
     wordlist = data.get('wordlist', 'wordlist.txt')
     aes_key_size = data.get('aes_key_size', 128)  # AES key size (128, 192, 256)
+    backend_selection = data.get('backend', 'auto')  # User selected: auto, gpu, or cpu
     
     # Calculate total keyspace for all lengths
     total_keyspace = 0
@@ -172,6 +173,17 @@ def submit_task():
     if algorithm and algorithm.lower() == 'aes':
         algorithm_display = f"AES-{aes_key_size}"
     
+    # Determine backend display based on user selection and algorithm support
+    gpu_supported_algos = ['md5', 'sha1', 'sha256', 'sha512']
+    print(f"DEBUG: backend_selection={backend_selection}, algorithm={algorithm}")
+    if backend_selection == 'gpu':
+        backend_display = 'GPU'
+    elif backend_selection == 'cpu':
+        backend_display = 'CPU'
+    else:  # auto
+        backend_display = 'GPU' if algorithm in gpu_supported_algos else 'CPU'
+    print(f"DEBUG: backend_display={backend_display}")
+    
     task = {
         'task_id': task_id,
         'algorithm': algorithm,
@@ -184,7 +196,8 @@ def submit_task():
         'progress': 0,
         'result': None,
         'worker_id': None,
-        'backend': 'GPU' if data.get('algorithm') in ['md5', 'sha1', 'sha256', 'sha512'] else 'CPU',
+        'backend': backend_display,
+        'backend_selection': backend_selection,  # Store the user's actual selection
         'keyspace': {
             'charset': charset,
             'min_length': min_len,
