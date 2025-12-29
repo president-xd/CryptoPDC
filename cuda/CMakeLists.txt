@@ -4,10 +4,20 @@ set(CUDA_SOURCES
     src/common.cu
     
     # Hash algorithm kernels (GPU implementations)
+    src/hash/md2_kernel.cu
+    src/hash/md4_kernel.cu
     src/hash/md5_kernel.cu
+    src/hash/md6_kernel.cu
+    src/hash/ntlm_kernel.cu
     src/hash/sha1_kernel.cu
+    src/hash/sha224_kernel.cu
     src/hash/sha256_kernel.cu
+    src/hash/sha384_kernel.cu
     src/hash/sha512_kernel.cu
+    src/hash/sha3_kernel.cu
+    src/hash/ripemd_kernel.cu
+    src/hash/checksum_kernel.cu
+    src/hash/whirlpool_kernel.cu
     
     # Symmetric encryption kernels (GPU implementations)
     src/symmetric/aes128_kernel.cu
