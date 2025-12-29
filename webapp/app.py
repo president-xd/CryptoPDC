@@ -61,6 +61,25 @@ def generate_candidates(charset, length, batch_size=100000):
     if candidates:
         yield candidates
 
+def generate_aes_key_candidates(charset, length, key_bytes, batch_size=50000):
+    """Generate AES key candidates - converts password to padded hex key"""
+    from itertools import product
+    candidates = []
+    for combo in product(charset, repeat=length):
+        password = ''.join(combo)
+        # Convert password to bytes and pad to key_bytes
+        key_bytes_data = password.encode('utf-8')
+        # Pad with zeros to reach required key length
+        if len(key_bytes_data) < key_bytes:
+            key_bytes_data = key_bytes_data + b'\x00' * (key_bytes - len(key_bytes_data))
+        key_hex = key_bytes_data[:key_bytes].hex()
+        candidates.append(key_hex)
+        if len(candidates) >= batch_size:
+            yield candidates
+            candidates = []
+    if candidates:
+        yield candidates
+
 def process_task_locally(task):
     """Process a task locally using the C++ bindings"""
     task_id = task.get('task_id')
@@ -97,53 +116,52 @@ def process_task_locally(task):
             if not plaintext:
                 raise ValueError("AES cracking requires known plaintext. This is a known-plaintext attack.")
             
-            ciphertext = target  # The target is the ciphertext
+            ciphertext = target.lower()  # Normalize to lowercase
+            plaintext = plaintext.lower()
             key_bytes = aes_key_size // 8  # 16, 24, or 32 bytes
             
             print(f"  AES-{aes_key_size} known-plaintext attack")
-            print(f"  Plaintext: {plaintext[:32]}...")
-            print(f"  Ciphertext: {ciphertext[:32]}...")
+            print(f"  Plaintext (hex): {plaintext}")
+            print(f"  Ciphertext (hex): {ciphertext}")
+            print(f"  Key size: {key_bytes} bytes ({key_bytes * 2} hex chars)")
             
-            # For AES, we generate candidate keys and test them
-            # Key must be exactly key_bytes long, so we pad short keys
+            # For AES, we generate candidate passwords, convert to keys and test them
             for length in range(min_length, max_length + 1):
                 if found:
                     break
                 
                 iter_count = len(charset) ** length
-                print(f"  Trying key length {length} ({iter_count} combinations)...")
+                print(f"  Trying password length {length} ({iter_count} combinations)...")
                 
-                # Generate candidates in batches
-                batch_size = min(100000, iter_count)
-                for batch in generate_candidates(charset, length, batch_size):
+                # Generate candidates in batches using the AES-specific generator
+                batch_count = 0
+                for batch in generate_aes_key_candidates(charset, length, key_bytes, batch_size=50000):
                     if found:
                         break
                     
-                    # Pad keys to required length (repeat or pad with zeros)
-                    padded_candidates = []
-                    for cand in batch:
-                        # Convert to hex and pad to key_bytes * 2 hex chars
-                        key_hex = cand.encode().hex()
-                        if len(key_hex) < key_bytes * 2:
-                            key_hex = key_hex + '00' * (key_bytes - len(key_hex) // 2)
-                        padded_candidates.append(key_hex[:key_bytes * 2])
+                    batch_count += 1
+                    if batch_count % 10 == 0:
+                        print(f"    Processed {total_iterations + len(batch)} candidates...")
                     
                     try:
                         if aes_key_size == 128:
-                            found_key = core.cuda_crack_aes128(plaintext, ciphertext, padded_candidates)
+                            found_key = core.cuda_crack_aes128(plaintext, ciphertext, batch)
                         elif aes_key_size == 192:
-                            found_key = core.cuda_crack_aes192(plaintext, ciphertext, padded_candidates)
+                            found_key = core.cuda_crack_aes192(plaintext, ciphertext, batch)
                         else:
-                            found_key = core.cuda_crack_aes256(plaintext, ciphertext, padded_candidates)
+                            found_key = core.cuda_crack_aes256(plaintext, ciphertext, batch)
                         
                         if found_key:
                             found = True
-                            # Convert hex key back to original
-                            result = bytes.fromhex(found_key).decode('utf-8', errors='ignore').rstrip('\x00')
-                            print(f"  Found key: {result} (hex: {found_key})")
+                            # Convert hex key back to original password (strip null padding)
+                            key_data = bytes.fromhex(found_key)
+                            result = key_data.rstrip(b'\x00').decode('utf-8', errors='replace')
+                            print(f"  *** FOUND KEY: '{result}' (hex: {found_key}) ***")
                             break
                     except Exception as e:
                         print(f"  AES crack error: {e}")
+                        import traceback
+                        traceback.print_exc()
                     
                     total_iterations += len(batch)
                     
