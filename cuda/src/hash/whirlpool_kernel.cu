@@ -25,7 +25,7 @@ __constant__ uint8_t d_SBOX[256] = {
     0x16, 0x3A, 0x69, 0x09, 0x70, 0xB6, 0xD0, 0xED, 0xCC, 0x42, 0x98, 0xA4, 0x28, 0x5C, 0xF8, 0x86
 };
 
-__constant__ uint64_t d_RC[10] = {
+__constant__ uint64_t d_whirlpool_RC[10] = {
     0x1823c6e887b8014fULL, 0x36a6d2f5796f9152ULL, 0x60bc9b8ea30c7b35ULL, 0x1de0d7c22e4bfe57ULL,
     0x157737e59ff04adaULL, 0x58c9290ab1a06b85ULL, 0xbd5d10f4cb3e0567ULL, 0xe427418ba77d95d8ULL,
     0xfbee7c66dd17479eULL, 0xca2dbf07ad5a8333ULL
@@ -69,7 +69,7 @@ __device__ void device_whirlpool_transform(uint64_t* hash, const uint8_t* block)
                 }
             }
         }
-        L[0] ^= d_RC[r];
+        L[0] ^= d_whirlpool_RC[r];
         for (int i = 0; i < 8; i++) K[i] = L[i];
         
         // State transformation

@@ -13,7 +13,7 @@ namespace hash {
 #define SIG0_64(x) (ROTR64(x, 1) ^ ROTR64(x, 8) ^ ((x) >> 7))
 #define SIG1_64(x) (ROTR64(x, 19) ^ ROTR64(x, 61) ^ ((x) >> 6))
 
-__constant__ uint64_t d_sha512_k[80] = {
+__constant__ uint64_t d_sha384_k[80] = {
     0x428a2f98d728ae22ULL, 0x7137449123ef65cdULL, 0xb5c0fbcfec4d3b2fULL, 0xe9b5dba58189dbbcULL,
     0x3956c25bf348b538ULL, 0x59f111f1b605d019ULL, 0x923f82a4af194f9bULL, 0xab1c5ed5da6d8118ULL,
     0xd807aa98a3030242ULL, 0x12835b0145706fbeULL, 0x243185be4ee4b28cULL, 0x550c7dc3d5ffb4e2ULL,
@@ -68,7 +68,7 @@ __device__ void device_sha384(const uint8_t* input, size_t len, uint8_t* output)
     uint64_t e = h4, f = h5, g = h6, h = h7;
     
     for (int i = 0; i < 80; i++) {
-        uint64_t t1 = h + EP1_64(e) + CH64(e, f, g) + d_sha512_k[i] + w[i];
+        uint64_t t1 = h + EP1_64(e) + CH64(e, f, g) + d_sha384_k[i] + w[i];
         uint64_t t2 = EP0_64(a) + MAJ64(a, b, c);
         h = g; g = f; f = e; e = d + t1;
         d = c; c = b; b = a; a = t1 + t2;
