@@ -23,6 +23,11 @@ nvcc $NVCC_FLAGS -c cuda/src/hash/sha1_kernel.cu -o build/obj/sha1_kernel.o
 nvcc $NVCC_FLAGS -c cuda/src/hash/sha256_kernel.cu -o build/obj/sha256_kernel.o
 nvcc $NVCC_FLAGS -c cuda/src/hash/sha512_kernel.cu -o build/obj/sha512_kernel.o
 
+# AES CUDA kernels
+nvcc $NVCC_FLAGS -c cuda/src/symmetric/aes128_kernel.cu -o build/obj/aes128_kernel.o
+nvcc $NVCC_FLAGS -c cuda/src/symmetric/aes192_kernel.cu -o build/obj/aes192_kernel.o
+nvcc $NVCC_FLAGS -c cuda/src/symmetric/aes256_kernel.cu -o build/obj/aes256_kernel.o
+
 # 2. Compile C++ Core
 echo "Compiling C++ Core..."
 g++ $CXX_FLAGS -c core/src/common/utils.cpp -o build/obj/utils.o
@@ -31,6 +36,7 @@ g++ $CXX_FLAGS -c core/src/algorithms/hash/md5.cpp -o build/obj/md5.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha1.cpp -o build/obj/sha1.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha256.cpp -o build/obj/sha256.o
 g++ $CXX_FLAGS -c core/src/algorithms/hash/sha512.cpp -o build/obj/sha512.o
+g++ $CXX_FLAGS -c core/src/algorithms/symmetric/aes.cpp -o build/obj/aes.o
 g++ $CXX_FLAGS -c core/src/cpu_cracker.cpp -o build/obj/cpu_cracker.o
 
 # 3. Compile Python Bindings
