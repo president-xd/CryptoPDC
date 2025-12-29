@@ -229,12 +229,12 @@ def init_infrastructure():
     
     if task_queue is None:
         task_queue = TaskQueue(port=5555)
-        print("✓ Task Queue started on port 5555")
+        print("[OK] Task Queue started on port 5555")
     
     if result_collector is None:
         result_collector = ResultCollector(port=5556, callback=result_handler)
         result_collector.start()
-        print("✓ Result Collector started on port 5556")
+        print("[OK] Result Collector started on port 5556")
 
 @app.route('/')
 def index():
@@ -476,7 +476,7 @@ if __name__ == '__main__':
     
     init_infrastructure()
     
-    print("\n✓ Flask app starting on http://localhost:5000")
+    print("\n[OK] Flask app starting on http://localhost:5000")
     print("  Open this URL in your browser\n")
     
     socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)

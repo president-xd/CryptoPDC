@@ -7,20 +7,20 @@
 
 **CryptoPDC** (Crypto Parallel Distributed Cracker) is a professional-grade distributed cryptanalysis framework designed for high-performance cryptographic analysis using both CPU and GPU resources. The framework enables parallel and distributed execution of cryptanalytic attacks across multiple nodes, with automatic result discovery and propagation.
 
-## 🚀 Features
+## Features
 
-- **🔥 Hybrid Computing**: Seamless CPU (C++) and GPU (CUDA) execution
-- **🌐 Distributed Architecture**: Master-worker model with automatic load balancing
-- **🔐 Extensive Algorithm Support**: 20+ cryptographic algorithms
+- **Hybrid Computing**: Seamless CPU (C++) and GPU (CUDA) execution
+- **Distributed Architecture**: Master-worker model with automatic load balancing
+- **Extensive Algorithm Support**: 20+ cryptographic algorithms
   - **Hash Functions**: MD5, SHA-1, SHA-256, SHA-512, SHA-3, BLAKE2, Whirlpool, RIPEMD-160
   - **Symmetric Ciphers**: AES, DES, 3DES, Blowfish, Twofish, Serpent, ChaCha20, RC4, PRESENT, Camellia
   - **Asymmetric**: RSA, ECC, ElGamal, Diffie-Hellman
-- **⚡ Multiple Attack Modes**: Brute force, dictionary, hybrid, rule-based
-- **🎯 Auto-Discovery**: Automatic result propagation when any worker finds the solution
-- **📊 Modern Web Interface**: Real-time monitoring and control
-- **🏗️ Production-Ready**: Professional code quality, comprehensive testing, full documentation
+- **Multiple Attack Modes**: Brute force, dictionary, hybrid, rule-based
+- **Auto-Discovery**: Automatic result propagation when any worker finds the solution
+- **Modern Web Interface**: Real-time monitoring and control
+- **Production-Ready**: Professional code quality, comprehensive testing, full documentation
 
-## 🏛️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -51,7 +51,7 @@
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## 📋 Requirements
+## Requirements
 
 ### System Requirements
 - **OS**: Linux (Ubuntu 20.04+, CentOS 8+) or Windows 10/11
@@ -67,7 +67,7 @@
 - **Python**: 3.10 or newer
 - **Node.js**: 16+ (for frontend development)
 
-## 🛠️ Installation
+## Installation
 
 ### 1. Clone the Repository
 ```bash
@@ -117,10 +117,10 @@ pip install -r requirements.txt
 ### 4. Verify Installation
 ```bash
 export PYTHONPATH=$(pwd)/python:$PYTHONPATH
-python3 -c "from cryptopdc.bindings import cryptopdc_bindings; print('✓ CryptoPDC installed successfully')"
+python3 -c "from cryptopdc.bindings import cryptopdc_bindings; print('CryptoPDC installed successfully')"
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Start Master Node
 ```bash
@@ -174,7 +174,7 @@ for progress in client.monitor_task(task.id):
         break
 ```
 
-## 📚 Documentation
+## Documentation
 
 - [Architecture Overview](docs/architecture.md)
 - [API Reference](docs/api_reference.md)
@@ -182,7 +182,7 @@ for progress in client.monitor_task(task.id):
 - [Algorithm Specifications](docs/algorithm_specs.md)
 - [Deployment Guide](docs/deployment.md)
 
-## 🧪 Testing
+## Testing
 
 ### Run All Tests
 ```bash
@@ -203,7 +203,7 @@ pytest tests/ -v
 pytest tests/test_integration.py -v
 ```
 
-## 📊 Performance Benchmarks
+## Performance Benchmarks
 
 Tested on NVIDIA RTX 3080 (10GB):
 
@@ -215,35 +215,35 @@ Tested on NVIDIA RTX 3080 (10GB):
 
 *MH/s = Million hashes/operations per second, GH/s = Billion*
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## ⚖️ Legal Notice
+## Legal Notice
 
 **This framework is designed for authorized security research and educational purposes only.**
 
-- ✅ Authorized penetration testing
-- ✅ Security research with permission
-- ✅ Educational purposes
-- ✅ Password recovery for owned systems
-- ❌ Unauthorized access to systems or data
-- ❌ Illegal activities
+- [ALLOWED] Authorized penetration testing
+- [ALLOWED] Security research with permission
+- [ALLOWED] Educational purposes
+- [ALLOWED] Password recovery for owned systems
+- [PROHIBITED] Unauthorized access to systems or data
+- [PROHIBITED] Illegal activities
 
 Users are solely responsible for ensuring their use complies with applicable laws and regulations.
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - NVIDIA CUDA Team for GPU computing platform
 - OpenSSL Project for cryptographic reference implementations
 - ZeroMQ Community for high-performance messaging
 - All contributors and supporters
 
-## 📧 Contact
+## Contact
 
 - **Project Lead**: [Your Name]
 - **Email**: contact@cryptopdc.dev
