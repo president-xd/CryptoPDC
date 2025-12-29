@@ -1,0 +1,2 @@
+/usr/bin/ar qc libcryptopdc_core.a CMakeFiles/cryptopdc_core.dir/src/common/utils.cpp.o CMakeFiles/cryptopdc_core.dir/src/common/types.cpp.o CMakeFiles/cryptopdc_core.dir/src/algorithms/hash/md5.cpp.o CMakeFiles/cryptopdc_core.dir/src/algorithms/hash/sha1.cpp.o CMakeFiles/cryptopdc_core.dir/src/algorithms/hash/sha256.cpp.o CMakeFiles/cryptopdc_core.dir/src/algorithms/hash/sha512.cpp.o CMakeFiles/cryptopdc_core.dir/src/algorithms/symmetric/aes.cpp.o CMakeFiles/cryptopdc_core.dir/src/cpu_cracker.cpp.o
+/usr/bin/ranlib libcryptopdc_core.a
