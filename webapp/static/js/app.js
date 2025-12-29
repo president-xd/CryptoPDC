@@ -218,7 +218,13 @@ function updateConnectionStatus(connected) {
 
 // Event Listeners
 function setupEventListeners() {
-    document.getElementById('task-form').addEventListener('submit', handleSubmit);
+    const form = document.getElementById('task-form');
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleSubmit(e);
+        return false;
+    });
     document.getElementById('charset-preset').addEventListener('change', updateCharsetField);
     document.getElementById('attack-mode').addEventListener('change', updateAttackModeFields);
     document.getElementById('algorithm').addEventListener('change', updateAlgorithmOptions);
@@ -474,139 +480,152 @@ function updateAlgorithmOptions() {
 
 // Handle form submission
 async function handleSubmit(e) {
-    e.preventDefault();
-
-    const algo = document.getElementById('algorithm').value;
-    const info = algorithmInfo[algo];
-    
-    if (!algo || !info) {
-        showNotification('Please select an algorithm', 'error');
-        return;
-    }
-
-    const charset = getCharset();
-    const maxLen = parseInt(document.getElementById('max-length').value);
-    const minLen = parseInt(document.getElementById('min-length').value);
-    const attackMode = document.getElementById('attack-mode').value;
-    const wordlist = document.getElementById('wordlist').value;
-    const backendSelection = document.getElementById('backend').value;
-
-    // Calculate total keyspace
-    let totalKeyspace = 0;
-    if (attackMode === 'brute') {
-        for (let len = minLen; len <= maxLen; len++) {
-            totalKeyspace += Math.pow(charset.length, len);
-        }
-    } else {
-        totalKeyspace = 1000000;
-    }
-
-    // Build form data
-    const formData = {
-        algorithm: algo,
-        attack_mode: attackMode,
-        charset: charset,
-        min_length: minLen,
-        max_length: maxLen,
-        wordlist: wordlist,
-        keyspace_size: totalKeyspace,
-        backend: backendSelection
-    };
-
-    // Handle based on algorithm type
-    if (info.type === 'hash') {
-        const target = document.getElementById('target').value.trim();
-        formData.target = target;
-        
-        if (target.length !== info.hashLength) {
-            showNotification(`Invalid ${info.name} hash length. Expected ${info.hashLength} characters, got ${target.length}`, 'error');
-            return;
-        }
-        
-        if (!/^[a-fA-F0-9]+$/.test(target)) {
-            showNotification('Hash must contain only hexadecimal characters (0-9, a-f)', 'error');
-            return;
-        }
-        
-    } else if (info.type === 'symmetric') {
-        // Symmetric encryption
-        const keySize = parseInt(document.getElementById('aes-key-size').value);
-        const cipherMode = document.getElementById('cipher-mode').value;
-        const padding = document.getElementById('padding').value;
-        const ciphertext = document.getElementById('aes-ciphertext').value.trim();
-        
-        const keyKnowledge = document.querySelector('input[name="key-knowledge"]:checked')?.value;
-        const ivKnowledge = document.querySelector('input[name="iv-knowledge"]:checked')?.value;
-        const plaintextKnowledge = document.querySelector('input[name="plaintext-knowledge"]:checked')?.value;
-        
-        // Validate ciphertext
-        if (!ciphertext || ciphertext.length !== 32) {
-            showNotification('Ciphertext must be 32 hex characters (16 bytes)', 'error');
-            return;
-        }
-        
-        if (!/^[a-fA-F0-9]+$/.test(ciphertext)) {
-            showNotification('Ciphertext must contain only hexadecimal characters', 'error');
-            return;
-        }
-        
-        formData.target = ciphertext;
-        formData.aes_key_size = keySize;
-        formData.cipher_mode = cipherMode;
-        formData.padding = padding;
-        formData.key_knowledge = keyKnowledge;
-        formData.iv_knowledge = ivKnowledge;
-        formData.plaintext_knowledge = plaintextKnowledge;
-        
-        // Add known values if user has them
-        if (keyKnowledge === 'known') {
-            const key = document.getElementById('aes-key').value.trim();
-            const expectedKeyLen = (keySize / 8) * 2; // hex chars
-            if (!key || key.length !== expectedKeyLen) {
-                showNotification(`Key must be ${expectedKeyLen} hex characters for AES-${keySize}`, 'error');
-                return;
-            }
-            if (!/^[a-fA-F0-9]+$/.test(key)) {
-                showNotification('Key must contain only hexadecimal characters', 'error');
-                return;
-            }
-            formData.aes_key = key;
-        }
-        
-        if (cipherMode !== 'ecb' && ivKnowledge === 'known') {
-            const iv = document.getElementById('aes-iv').value.trim();
-            if (!iv || iv.length !== 32) {
-                showNotification('IV must be 32 hex characters (16 bytes)', 'error');
-                return;
-            }
-            if (!/^[a-fA-F0-9]+$/.test(iv)) {
-                showNotification('IV must contain only hexadecimal characters', 'error');
-                return;
-            }
-            formData.aes_iv = iv;
-        }
-        
-        if (plaintextKnowledge === 'known') {
-            const plaintext = document.getElementById('aes-plaintext').value.trim();
-            if (!plaintext || plaintext.length !== 32) {
-                showNotification('Plaintext must be 32 hex characters (16 bytes)', 'error');
-                return;
-            }
-            if (!/^[a-fA-F0-9]+$/.test(plaintext)) {
-                showNotification('Plaintext must contain only hexadecimal characters', 'error');
-                return;
-            }
-            formData.aes_plaintext = plaintext;
-        }
-    }
-
-    // Final validation
-    if (!formData.target) {
-        showNotification('Please fill in all required fields', 'error');
-        return;
+    alert('Button clicked! handleSubmit called');
+    console.log('=== FORM SUBMIT CALLED ===');
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
     }
 
     try {
+        const algo = document.getElementById('algorithm').value;
+        const info = algorithmInfo[algo];
+        
+        console.log('Algorithm:', algo);
+        console.log('Info:', info);
+        
+        if (!algo || !info) {
+            showNotification('Please select an algorithm', 'error');
+            return false;
+        }
+
+        const charset = getCharset();
+        const maxLen = parseInt(document.getElementById('max-length').value);
+        const minLen = parseInt(document.getElementById('min-length').value);
+        const attackMode = document.getElementById('attack-mode').value;
+        const wordlist = document.getElementById('wordlist').value;
+        const backendSelection = document.getElementById('backend').value;
+        
+        console.log('Form data:', { charset, maxLen, minLen, attackMode, wordlist, backendSelection });
+
+        // Calculate total keyspace
+        let totalKeyspace = 0;
+        if (attackMode === 'brute') {
+            for (let len = minLen; len <= maxLen; len++) {
+                totalKeyspace += Math.pow(charset.length, len);
+            }
+        } else {
+            totalKeyspace = 1000000;
+        }
+
+        // Build form data
+        const formData = {
+            algorithm: algo,
+            attack_mode: attackMode,
+            charset: charset,
+            min_length: minLen,
+            max_length: maxLen,
+            wordlist: wordlist,
+            keyspace_size: totalKeyspace,
+            backend: backendSelection
+        };
+
+        // Handle based on algorithm type
+        if (info.type === 'hash') {
+            const target = document.getElementById('target').value.trim();
+            formData.target = target;
+            
+            if (target.length !== info.hashLength) {
+                showNotification(`Invalid ${info.name} hash length. Expected ${info.hashLength} characters, got ${target.length}`, 'error');
+                return false;
+            }
+            
+            if (!/^[a-fA-F0-9]+$/.test(target)) {
+                showNotification('Hash must contain only hexadecimal characters (0-9, a-f)', 'error');
+                return false;
+            }
+            
+        } else if (info.type === 'symmetric') {
+            // Symmetric encryption
+            const keySize = parseInt(document.getElementById('aes-key-size').value);
+            const cipherMode = document.getElementById('cipher-mode').value;
+            const padding = document.getElementById('padding').value;
+            const ciphertext = document.getElementById('aes-ciphertext').value.trim();
+            
+            const keyKnowledge = document.querySelector('input[name="key-knowledge"]:checked')?.value;
+            const ivKnowledge = document.querySelector('input[name="iv-knowledge"]:checked')?.value;
+            const plaintextKnowledge = document.querySelector('input[name="plaintext-knowledge"]:checked')?.value;
+            
+            // Validate ciphertext
+            if (!ciphertext || ciphertext.length !== 32) {
+                showNotification('Ciphertext must be 32 hex characters (16 bytes)', 'error');
+                return false;
+            }
+            
+            if (!/^[a-fA-F0-9]+$/.test(ciphertext)) {
+                showNotification('Ciphertext must contain only hexadecimal characters', 'error');
+                return false;
+            }
+            
+            formData.target = ciphertext;
+            formData.aes_key_size = keySize;
+            formData.cipher_mode = cipherMode;
+            formData.padding = padding;
+            formData.key_knowledge = keyKnowledge;
+            formData.iv_knowledge = ivKnowledge;
+            formData.plaintext_knowledge = plaintextKnowledge;
+            
+            // Add known values if user has them
+            if (keyKnowledge === 'known') {
+                const key = document.getElementById('aes-key').value.trim();
+                const expectedKeyLen = (keySize / 8) * 2; // hex chars
+                if (!key || key.length !== expectedKeyLen) {
+                    showNotification(`Key must be ${expectedKeyLen} hex characters for AES-${keySize}`, 'error');
+                    return false;
+                }
+                if (!/^[a-fA-F0-9]+$/.test(key)) {
+                    showNotification('Key must contain only hexadecimal characters', 'error');
+                    return false;
+                }
+                formData.aes_key = key;
+            }
+            
+            if (cipherMode !== 'ecb' && ivKnowledge === 'known') {
+                const iv = document.getElementById('aes-iv').value.trim();
+                if (!iv || iv.length !== 32) {
+                    showNotification('IV must be 32 hex characters (16 bytes)', 'error');
+                    return false;
+                }
+                if (!/^[a-fA-F0-9]+$/.test(iv)) {
+                    showNotification('IV must contain only hexadecimal characters', 'error');
+                    return false;
+                }
+                formData.aes_iv = iv;
+            }
+            
+            if (plaintextKnowledge === 'known') {
+                const plaintext = document.getElementById('aes-plaintext').value.trim();
+                if (!plaintext || plaintext.length !== 32) {
+                    showNotification('Plaintext must be 32 hex characters (16 bytes)', 'error');
+                    return false;
+                }
+                if (!/^[a-fA-F0-9]+$/.test(plaintext)) {
+                    showNotification('Plaintext must contain only hexadecimal characters', 'error');
+                    return false;
+                }
+                formData.aes_plaintext = plaintext;
+            }
+        }
+
+        // Final validation
+        if (!formData.target) {
+            showNotification('Please fill in all required fields', 'error');
+            return false;
+        }
+
+        console.log('Submitting formData:', formData);
+        console.log('Making fetch request to /api/tasks...');
+        
         const response = await fetch('/api/tasks', {
             method: 'POST',
             headers: {
@@ -615,8 +634,11 @@ async function handleSubmit(e) {
             body: JSON.stringify(formData)
         });
 
+        console.log('Response status:', response.status);
+
         if (response.ok) {
             const task = await response.json();
+            console.log('Task created:', task);
             tasks[task.task_id] = task;
             renderTask(task);
             updateStats();
@@ -632,8 +654,9 @@ async function handleSubmit(e) {
         }
     } catch (error) {
         console.error('Submit error:', error);
-        showNotification('Network error', 'error');
+        showNotification('Error: ' + error.message, 'error');
     }
+    return false;
 }
 
 // Get current charset
