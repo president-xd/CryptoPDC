@@ -6,6 +6,7 @@
 #include <cmath>
 #include <chrono>
 #include <fstream>
+#include <stdexcept>
 
 #ifdef __linux__
 #include <sys/sysinfo.h>
@@ -17,6 +18,37 @@
 
 namespace cryptopdc {
 namespace utils {
+
+// ============================================================================
+// Base64 encoding table
+// ============================================================================
+static const char BASE64_CHARS[] = 
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    "abcdefghijklmnopqrstuvwxyz"
+    "0123456789+/";
+
+static const int BASE64_DECODE_TABLE[256] = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  // 0-15
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,  // 16-31
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,62,-1,-1,-1,63,  // 32-47 (+, /)
+    52,53,54,55,56,57,58,59,60,61,-1,-1,-1,-1,-1,-1,  // 48-63 (0-9)
+    -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,10,11,12,13,14,  // 64-79 (A-O)
+    15,16,17,18,19,20,21,22,23,24,25,-1,-1,-1,-1,-1,  // 80-95 (P-Z)
+    -1,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,  // 96-111 (a-o)
+    41,42,43,44,45,46,47,48,49,50,51,-1,-1,-1,-1,-1,  // 112-127 (p-z)
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
+};
+
+// ============================================================================
+// Hex encoding/decoding
+// ============================================================================
 
 std::string bytes_to_hex(const uint8_t* data, size_t len) {
     std::ostringstream oss;
@@ -36,6 +68,145 @@ std::vector<uint8_t> hex_to_bytes(const std::string& hex) {
     }
     return bytes;
 }
+
+bool is_valid_hex(const std::string& str) {
+    if (str.empty() || str.length() % 2 != 0) {
+        return false;
+    }
+    for (char c : str) {
+        if (!std::isxdigit(static_cast<unsigned char>(c))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// ============================================================================
+// Base64 encoding/decoding
+// ============================================================================
+
+std::string bytes_to_base64(const uint8_t* data, size_t len) {
+    std::string result;
+    result.reserve(((len + 2) / 3) * 4);
+    
+    size_t i = 0;
+    while (i < len) {
+        uint32_t octet_a = i < len ? data[i++] : 0;
+        uint32_t octet_b = i < len ? data[i++] : 0;
+        uint32_t octet_c = i < len ? data[i++] : 0;
+        
+        uint32_t triple = (octet_a << 16) | (octet_b << 8) | octet_c;
+        
+        result += BASE64_CHARS[(triple >> 18) & 0x3F];
+        result += BASE64_CHARS[(triple >> 12) & 0x3F];
+        result += BASE64_CHARS[(triple >> 6) & 0x3F];
+        result += BASE64_CHARS[triple & 0x3F];
+    }
+    
+    // Add padding
+    size_t mod = len % 3;
+    if (mod == 1) {
+        result[result.length() - 2] = '=';
+        result[result.length() - 1] = '=';
+    } else if (mod == 2) {
+        result[result.length() - 1] = '=';
+    }
+    
+    return result;
+}
+
+std::string bytes_to_base64(const std::vector<uint8_t>& data) {
+    return bytes_to_base64(data.data(), data.size());
+}
+
+std::vector<uint8_t> base64_to_bytes(const std::string& base64) {
+    std::vector<uint8_t> result;
+    
+    if (base64.empty()) {
+        return result;
+    }
+    
+    // Calculate output size (accounting for padding)
+    size_t len = base64.length();
+    size_t padding = 0;
+    if (len >= 2) {
+        if (base64[len - 1] == '=') padding++;
+        if (base64[len - 2] == '=') padding++;
+    }
+    
+    result.reserve((len * 3) / 4 - padding);
+    
+    uint32_t buffer = 0;
+    int bits_collected = 0;
+    
+    for (char c : base64) {
+        if (c == '=') break;  // Stop at padding
+        
+        int value = BASE64_DECODE_TABLE[static_cast<unsigned char>(c)];
+        if (value < 0) {
+            continue;  // Skip invalid characters (whitespace, etc.)
+        }
+        
+        buffer = (buffer << 6) | value;
+        bits_collected += 6;
+        
+        if (bits_collected >= 8) {
+            bits_collected -= 8;
+            result.push_back(static_cast<uint8_t>((buffer >> bits_collected) & 0xFF));
+        }
+    }
+    
+    return result;
+}
+
+bool is_valid_base64(const std::string& str) {
+    if (str.empty()) {
+        return false;
+    }
+    
+    size_t len = str.length();
+    
+    // Base64 length must be divisible by 4
+    if (len % 4 != 0) {
+        return false;
+    }
+    
+    // Check all characters
+    for (size_t i = 0; i < len; ++i) {
+        char c = str[i];
+        
+        // Padding can only appear at the end
+        if (c == '=') {
+            if (i < len - 2) {
+                return false;
+            }
+        } else {
+            if (BASE64_DECODE_TABLE[static_cast<unsigned char>(c)] < 0) {
+                return false;
+            }
+        }
+    }
+    
+    return true;
+}
+
+// ============================================================================
+// Format conversion helpers
+// ============================================================================
+
+std::string hex_to_base64(const std::string& hex) {
+    std::vector<uint8_t> bytes = hex_to_bytes(hex);
+    return bytes_to_base64(bytes);
+}
+
+std::string base64_to_hex(const std::string& base64) {
+    std::vector<uint8_t> bytes = base64_to_bytes(base64);
+    return bytes_to_hex(bytes.data(), bytes.size());
+}
+
+// ============================================================================
+// String utilities
+// ============================================================================
 
 std::string to_lower(const std::string& str) {
     std::string result = str;
