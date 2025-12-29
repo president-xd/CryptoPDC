@@ -18,11 +18,28 @@ if [ -d "venv" ]; then
     echo "Activating virtual environment..."
     source venv/bin/activate
     echo "[OK] Virtual environment activated"
+else
+    echo "[WARN] No virtual environment found. Using system Python."
 fi
 
 # Set PYTHONPATH
 export PYTHONPATH="$PROJECT_ROOT/python"
 echo "[OK] PYTHONPATH set to $PYTHONPATH"
+
+# Check if Python bindings exist
+BINDINGS_PATH="$PROJECT_ROOT/python/cryptopdc/bindings"
+if ls "$BINDINGS_PATH"/cryptopdc_bindings*.so 1> /dev/null 2>&1; then
+    echo "[OK] Python bindings found"
+else
+    echo "[WARN] Python bindings not found!"
+    echo "       Run ./scripts/build.sh first to build the bindings"
+    echo ""
+    read -p "Continue anyway? (y/n) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
 
 # Check if worker should be started
 START_WORKER=${1:-"yes"}
