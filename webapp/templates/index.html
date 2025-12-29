@@ -50,10 +50,21 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="target">Target Hash</label>
+                        <label for="target">Target Hash / Encrypted Text</label>
                         <input type="text" id="target" name="target" class="input-field"
                             placeholder="e.g., 5d41402abc4b2a76b9719d911017c592" required>
                         <small class="help-text">Enter the hash you want to crack</small>
+                    </div>
+
+                    <!-- AES Options -->
+                    <div id="aes-options" class="form-group" style="display: none;">
+                        <label for="aes-key-size">AES Key Size</label>
+                        <select id="aes-key-size" name="aes-key-size" class="input-field">
+                            <option value="128">AES-128 (128 bits)</option>
+                            <option value="192">AES-192 (192 bits)</option>
+                            <option value="256">AES-256 (256 bits)</option>
+                        </select>
+                        <small class="help-text">Select the AES key size for the attack</small>
                     </div>
 
                     <!-- Dictionary Options -->
@@ -95,6 +106,13 @@
                                 <label for="max-length">Max Length</label>
                                 <input type="number" id="max-length" class="input-field" value="6" min="1" max="12">
                             </div>
+                        </div>
+
+                        <div class="checkbox-row">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="include-separators">
+                                <span class="checkbox-text">Include separators (space, underscore, dash)</span>
+                            </label>
                         </div>
                     </div>
 

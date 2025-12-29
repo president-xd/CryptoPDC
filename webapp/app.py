@@ -27,15 +27,26 @@ result_collector = None
 def result_handler(msg):
     """Handle results from workers"""
     task_id = msg.get('task_id')
+    msg_type = msg.get('type', 'result')
+    print(f"Result received for task {task_id}: type={msg_type}, status={msg.get('status')}")
+    
     if task_id in tasks:
-        tasks[task_id]['status'] = msg.get('status', 'completed')
-        tasks[task_id]['result'] = msg.get('result', '')
+        # Handle error messages
+        if msg_type == 'error':
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['error'] = msg.get('error', 'Unknown error')
+        else:
+            tasks[task_id]['status'] = msg.get('status', 'completed')
+            tasks[task_id]['result'] = msg.get('result', '')
+        
         tasks[task_id]['duration'] = msg.get('duration', 0)
+        tasks[task_id]['iterations'] = msg.get('iterations', 0)
         tasks[task_id]['worker_id'] = msg.get('worker_id', '')
         tasks[task_id]['completed_at'] = datetime.now().isoformat()
         
-        # Broadcast to all connected clients
-        socketio.emit('task_update', tasks[task_id])
+        # Broadcast to all connected clients (use socketio.emit with namespace for background thread)
+        socketio.emit('task_update', tasks[task_id], namespace='/')
+        print(f"Emitted task_update for {task_id}")
 
 def init_infrastructure():
     """Initialize task queue and result collector"""
@@ -87,15 +98,23 @@ def get_algorithms():
             'gpu_supported': False
         },
         {
-            'id': 'aes128',
-            'name': 'AES-128',
+            'id': 'aes',
+            'name': 'AES',
             'type': 'Symmetric',
-            'output_size': '128-bit',
-            'gpu_supported': False
+            'output_size': '128/192/256-bit',
+            'gpu_supported': False,
+            'key_sizes': [128, 192, 256]
         },
         {
             'id': 'des',
             'name': 'DES',
+            'type': 'Symmetric',
+            'output_size': '64-bit',
+            'gpu_supported': False
+        },
+        {
+            'id': '3des',
+            'name': '3DES',
             'type': 'Symmetric',
             'output_size': '64-bit',
             'gpu_supported': False
@@ -136,6 +155,7 @@ def submit_task():
     max_len = data.get('max_length', 6)
     attack_mode = data.get('attack_mode', 'brute')
     wordlist = data.get('wordlist', 'wordlist.txt')
+    aes_key_size = data.get('aes_key_size', 128)  # AES key size (128, 192, 256)
     
     # Calculate total keyspace for all lengths
     total_keyspace = 0
@@ -146,9 +166,17 @@ def submit_task():
         # For dictionary or hybrid, keyspace is approximate or file size
         total_keyspace = 1000000 # dummy value
     
+    # Determine algorithm name with key size for AES
+    algorithm = data.get('algorithm')
+    algorithm_display = algorithm
+    if algorithm and algorithm.lower() == 'aes':
+        algorithm_display = f"AES-{aes_key_size}"
+    
     task = {
         'task_id': task_id,
-        'algorithm': data.get('algorithm'),
+        'algorithm': algorithm,
+        'algorithm_display': algorithm_display,
+        'aes_key_size': aes_key_size if algorithm and algorithm.lower() == 'aes' else None,
         'attack_mode': attack_mode,
         'target': data.get('target'),
         'status': 'queued',
@@ -184,6 +212,29 @@ def get_task(task_id):
     if task_id not in tasks:
         return jsonify({'error': 'Task not found'}), 404
     return jsonify(tasks[task_id])
+
+@app.route('/api/tasks/<task_id>', methods=['DELETE'])
+def cancel_task(task_id):
+    """Cancel a task by ID"""
+    if task_id not in tasks:
+        return jsonify({'error': 'Task not found'}), 404
+    
+    task = tasks[task_id]
+    
+    # Only allow canceling tasks that are not already completed
+    if task['status'] in ['found', 'completed', 'cancelled']:
+        return jsonify({'error': f"Task already {task['status']}"}), 400
+    
+    # Update task status
+    task['status'] = 'cancelled'
+    task['cancelled_at'] = datetime.now().isoformat()
+    
+    # Broadcast cancellation to all clients
+    socketio.emit('task_update', task, namespace='/')
+    
+    # TODO: Send cancel signal to worker via control socket
+    
+    return jsonify({'message': 'Task cancelled', 'task': task}), 200
 
 @socketio.on('connect')
 def handle_connect():

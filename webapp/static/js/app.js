@@ -56,7 +56,85 @@ async function loadAlgorithms() {
     }
 }
 
-// ... (loadTasks is unchanged)
+// Load existing tasks from server
+async function loadTasks() {
+    try {
+        const response = await fetch('/api/tasks');
+        const taskList = await response.json();
+        
+        taskList.forEach(task => {
+            tasks[task.task_id] = task;
+            renderTask(task);
+        });
+        updateStats();
+    } catch (error) {
+        console.error('Failed to load tasks:', error);
+    }
+}
+
+// Setup Socket.IO listeners for real-time updates
+function setupSocketListeners() {
+    socket.on('connect', () => {
+        console.log('Connected to server');
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+    });
+
+    socket.on('connection_response', (data) => {
+        console.log('Server response:', data);
+    });
+
+    // When a new task is created (from another client or broadcast)
+    socket.on('task_created', (task) => {
+        console.log('New task created:', task);
+        // Only render if we don't already have this task displayed
+        const existingCard = document.getElementById(`task-${task.task_id}`);
+        if (!existingCard) {
+            tasks[task.task_id] = task;
+            renderTask(task);
+            updateStats();
+        }
+    });
+
+    // When a task is updated (progress, completion, etc.)
+    socket.on('task_update', (task) => {
+        console.log('Task updated:', task);
+        const previousTask = tasks[task.task_id];
+        tasks[task.task_id] = task;
+        
+        // Update existing card
+        const existingCard = document.getElementById(`task-${task.task_id}`);
+        if (existingCard) {
+            updateTaskCard(task);
+        }
+        
+        updateStats();
+        
+        // Show notification for completed tasks (only if status changed)
+        if (task.status === 'found' && task.result && (!previousTask || previousTask.status !== 'found')) {
+            showNotification(`✓ Password found: ${task.result}`, 'success');
+        } else if (task.status === 'completed' && !task.result && (!previousTask || previousTask.status !== 'completed')) {
+            showNotification('Task completed - password not found', 'warning');
+        } else if (task.status === 'cancelled' && (!previousTask || previousTask.status !== 'cancelled')) {
+            showNotification('Task cancelled', 'info');
+        } else if (task.status === 'error' && (!previousTask || previousTask.status !== 'error')) {
+            showNotification(`Task error: ${task.error || 'Unknown error'}`, 'error');
+        }
+    });
+
+    // When a task is deleted
+    socket.on('task_deleted', (data) => {
+        console.log('Task deleted:', data.task_id);
+        delete tasks[data.task_id];
+        const card = document.getElementById(`task-${data.task_id}`);
+        if (card) {
+            card.remove();
+        }
+        updateStats();
+    });
+}
 
 // Event Listeners
 function setupEventListeners() {
@@ -69,8 +147,11 @@ function setupEventListeners() {
     // Attack Mode change
     document.getElementById('attack-mode').addEventListener('change', updateAttackModeFields);
 
+    // Algorithm change (for AES options)
+    document.getElementById('algorithm').addEventListener('change', updateAlgorithmOptions);
+
     // Keyspace calculation
-    ['charset-preset', 'charset-custom', 'max-length'].forEach(id => {
+    ['charset-preset', 'charset-custom', 'max-length', 'include-separators'].forEach(id => {
         document.getElementById(id).addEventListener('input', calculateKeyspace);
     });
 }
@@ -89,7 +170,18 @@ function updateAttackModeFields() {
     }
 }
 
-// ... (socket listeners unchanged)
+// Show/hide AES options based on selected algorithm
+function updateAlgorithmOptions() {
+    const algo = document.getElementById('algorithm').value;
+    const aesOpts = document.getElementById('aes-options');
+    
+    // Show AES options for AES algorithms
+    if (algo && algo.toLowerCase().startsWith('aes')) {
+        aesOpts.style.display = 'block';
+    } else {
+        aesOpts.style.display = 'none';
+    }
+}
 
 // Handle form submission
 async function handleSubmit(e) {
@@ -122,6 +214,12 @@ async function handleSubmit(e) {
         keyspace_size: totalKeyspace
     };
 
+    // Add AES key size if AES algorithm is selected
+    const algo = formData.algorithm.toLowerCase();
+    if (algo.startsWith('aes')) {
+        formData.aes_key_size = parseInt(document.getElementById('aes-key-size').value);
+    }
+
     // Validation
     if (!formData.algorithm || !formData.target) {
         showNotification('Please fill in all required fields', 'error');
@@ -138,8 +236,15 @@ async function handleSubmit(e) {
         });
 
         if (response.ok) {
+            const task = await response.json();
+            // Add task to local state and render it
+            tasks[task.task_id] = task;
+            renderTask(task);
+            updateStats();
+            
             showNotification('Task submitted successfully!', 'success');
             document.getElementById('task-form').reset();
+            updateCharsetField();
             calculateKeyspace();
         } else {
             showNotification('Failed to submit task', 'error');
@@ -153,10 +258,20 @@ async function handleSubmit(e) {
 // Get current charset
 function getCharset() {
     const preset = document.getElementById('charset-preset').value;
+    let charset;
     if (preset === 'custom') {
-        return document.getElementById('charset-custom').value;
+        charset = document.getElementById('charset-custom').value;
+    } else {
+        charset = preset;
     }
-    return preset;
+    
+    // Add separators if checkbox is checked
+    const includeSeparators = document.getElementById('include-separators')?.checked;
+    if (includeSeparators) {
+        charset += ' _-';  // space, underscore, dash
+    }
+    
+    return charset;
 }
 
 // Update charset field based on preset
@@ -191,6 +306,13 @@ function calculateKeyspace() {
 // Render task card
 function renderTask(task) {
     const container = document.getElementById('tasks-container');
+    
+    // Check if card already exists - if so, update instead of creating
+    const existingCard = document.getElementById(`task-${task.task_id}`);
+    if (existingCard) {
+        existingCard.innerHTML = getTaskHTML(task);
+        return;
+    }
 
     // Remove empty state
     const emptyState = container.querySelector('.empty-state');
@@ -248,7 +370,7 @@ function getTaskHTML(task) {
         <div class="task-info">
             <div class="task-row">
                 <span class="task-label">Algorithm:</span>
-                <span class="task-value">${task.algorithm.toUpperCase()}</span>
+                <span class="task-value">${(task.algorithm_display || task.algorithm).toUpperCase()}</span>
             </div>
             <div class="task-row">
                 <span class="task-label">Attack Mode:</span>
@@ -272,7 +394,43 @@ function getTaskHTML(task) {
             </div>
         </div>
         ${resultHTML}
+        ${task.error ? `
+            <div class="task-error">
+                <div class="error-label">Error</div>
+                <div class="error-value">${escapeHtml(task.error)}</div>
+            </div>
+        ` : ''}
+        ${task.status === 'queued' || task.status === 'running' || task.status === 'processing' ? `
+            <div class="task-actions">
+                <button class="btn btn-cancel" onclick="cancelTask('${task.task_id}')">
+                    Cancel Task
+                </button>
+            </div>
+        ` : ''}
     `;
+}
+
+// Cancel a task by ID
+async function cancelTask(taskId) {
+    if (!confirm('Are you sure you want to cancel this task?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/tasks/${taskId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showNotification('Task cancelled successfully', 'success');
+        } else {
+            const data = await response.json();
+            showNotification(data.error || 'Failed to cancel task', 'error');
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        showNotification('Network error while cancelling task', 'error');
+    }
 }
 
 // Update statistics
@@ -309,9 +467,43 @@ function escapeHtml(text) {
 }
 
 function showNotification(message, type = 'info') {
-    // Simple console notification for now
     console.log(`[${type.toUpperCase()}] ${message}`);
 
-    // Could implement toast notifications here
-    alert(message);
+    // Create toast notification
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+        <span class="toast-message">${escapeHtml(message)}</span>
+        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Add to page or create container
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;';
+        document.body.appendChild(container);
+    }
+    
+    // Style the toast
+    toast.style.cssText = `
+        padding: 12px 20px;
+        border-radius: 8px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        animation: slideIn 0.3s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+    `;
+    
+    container.appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
 }

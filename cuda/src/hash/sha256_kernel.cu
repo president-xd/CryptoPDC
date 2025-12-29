@@ -204,7 +204,11 @@ cudaError_t launch_sha256_crack(
     
     // Launch configuration
     int threads_per_block = 256;
-    int blocks = (count + threads_per_block - 1) / threads_per_block;
+    uint64_t total_blocks = (count + threads_per_block - 1) / threads_per_block;
+    
+    // Limit blocks to CUDA's maximum grid dimension
+    int max_blocks = 65535;
+    int blocks = (total_blocks > max_blocks) ? max_blocks : static_cast<int>(total_blocks);
     
     // Launch kernel
     sha256_crack_kernel<<<blocks, threads_per_block>>>(

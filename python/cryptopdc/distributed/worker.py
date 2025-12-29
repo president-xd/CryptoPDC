@@ -171,7 +171,9 @@ class Worker:
             self.result_socket.send_json({
                 "type": "error",
                 "task_id": task.get('task_id'),
-                "error": str(e)
+                "status": "error",
+                "error": str(e),
+                "worker_id": f"gpu-{self.device_id}"
             })
 
     def crack_cpu(self, algo, target, charset, max_val, start, count):
