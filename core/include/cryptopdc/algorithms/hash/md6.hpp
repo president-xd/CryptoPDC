@@ -1,7 +1,7 @@
 #ifndef CRYPTOPDC_MD6_HPP
 #define CRYPTOPDC_MD6_HPP
 
-#include "cryptopdc/algorithms/hash_algorithm.hpp"
+#include "cryptopdc/algorithms/algorithm_base.hpp"
 
 namespace cryptopdc {
 namespace algorithms {
