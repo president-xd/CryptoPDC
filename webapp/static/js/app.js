@@ -12,12 +12,84 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initializeApp() {
     await loadAlgorithms();
-    await loadWordlists(); // Load wordlists
+    await loadWordlists();
     await loadTasks();
     updateCharsetField();
-    updateAttackModeFields(); // Initial state
-    calculateKeyspace();
 }
+
+// Algorithm information for user guidance
+const algorithmInfo = {
+    'md5': {
+        type: 'hash',
+        name: 'MD5',
+        description: 'You have an MD5 hash and want to find the original password/text that produced it.',
+        targetLabel: 'MD5 Hash to Crack',
+        targetPlaceholder: 'e.g., 5d41402abc4b2a76b9719d911017c592',
+        targetExample: 'Example: "hello" produces 5d41402abc4b2a76b9719d911017c592',
+        hashLength: 32,
+        gpuSupported: true
+    },
+    'sha1': {
+        type: 'hash',
+        name: 'SHA-1',
+        description: 'You have a SHA-1 hash and want to find the original password/text that produced it.',
+        targetLabel: 'SHA-1 Hash to Crack',
+        targetPlaceholder: 'e.g., aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d',
+        targetExample: 'Example: "hello" produces aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d',
+        hashLength: 40,
+        gpuSupported: true
+    },
+    'sha256': {
+        type: 'hash',
+        name: 'SHA-256',
+        description: 'You have a SHA-256 hash and want to find the original password/text that produced it.',
+        targetLabel: 'SHA-256 Hash to Crack',
+        targetPlaceholder: 'e.g., 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824',
+        targetExample: 'Example: "hello" produces 2cf24dba5fb0a30e26e83b2ac5b9e29e...',
+        hashLength: 64,
+        gpuSupported: true
+    },
+    'sha512': {
+        type: 'hash',
+        name: 'SHA-512',
+        description: 'You have a SHA-512 hash and want to find the original password/text that produced it.',
+        targetLabel: 'SHA-512 Hash to Crack',
+        targetPlaceholder: 'Enter 128-character hex hash',
+        targetExample: 'Example: "hello" produces 9b71d224bd62f3785d96d46ad3ea3d73...',
+        hashLength: 128,
+        gpuSupported: true
+    },
+    'aes': {
+        type: 'symmetric',
+        name: 'AES',
+        description: 'Known-Plaintext Attack: You have BOTH the original data (plaintext) AND the encrypted result (ciphertext), and want to find the encryption KEY that was used.',
+        targetLabel: 'Ciphertext',
+        targetPlaceholder: '32 hex characters (16 bytes)',
+        hashLength: 32,
+        gpuSupported: true,
+        keySizes: [128, 192, 256]
+    },
+    'des': {
+        type: 'symmetric',
+        name: 'DES',
+        description: 'DES encryption (legacy, 56-bit effective key). Not recommended for security.',
+        targetLabel: 'Ciphertext',
+        targetPlaceholder: '16 hex characters (8 bytes)',
+        hashLength: 16,
+        gpuSupported: false,
+        keySizes: [64]
+    },
+    '3des': {
+        type: 'symmetric',
+        name: '3DES',
+        description: 'Triple DES encryption. Uses 3 DES operations with 2 or 3 keys.',
+        targetLabel: 'Ciphertext',
+        targetPlaceholder: '16 hex characters (8 bytes)',
+        hashLength: 16,
+        gpuSupported: false,
+        keySizes: [128, 192]
+    }
+};
 
 // Load available wordlists
 async function loadWordlists() {
@@ -26,7 +98,7 @@ async function loadWordlists() {
         const lists = await response.json();
 
         const select = document.getElementById('wordlist');
-        select.innerHTML = ''; // Clear default
+        select.innerHTML = '';
         lists.forEach(l => {
             const option = document.createElement('option');
             option.value = l.id;
@@ -76,20 +148,20 @@ async function loadTasks() {
 function setupSocketListeners() {
     socket.on('connect', () => {
         console.log('Connected to server');
+        updateConnectionStatus(true);
     });
 
     socket.on('disconnect', () => {
         console.log('Disconnected from server');
+        updateConnectionStatus(false);
     });
 
     socket.on('connection_response', (data) => {
         console.log('Server response:', data);
     });
 
-    // When a new task is created (from another client or broadcast)
     socket.on('task_created', (task) => {
         console.log('New task created:', task);
-        // Only render if we don't already have this task displayed
         const existingCard = document.getElementById(`task-${task.task_id}`);
         if (!existingCard) {
             tasks[task.task_id] = task;
@@ -98,13 +170,11 @@ function setupSocketListeners() {
         }
     });
 
-    // When a task is updated (progress, completion, etc.)
     socket.on('task_update', (task) => {
         console.log('Task updated:', task);
         const previousTask = tasks[task.task_id];
         tasks[task.task_id] = task;
         
-        // Update existing card
         const existingCard = document.getElementById(`task-${task.task_id}`);
         if (existingCard) {
             updateTaskCard(task);
@@ -112,9 +182,8 @@ function setupSocketListeners() {
         
         updateStats();
         
-        // Show notification for completed tasks (only if status changed)
         if (task.status === 'found' && task.result && (!previousTask || previousTask.status !== 'found')) {
-            showNotification(`✓ Password found: ${task.result}`, 'success');
+            showNotification(`Password found: ${task.result}`, 'success');
         } else if (task.status === 'completed' && !task.result && (!previousTask || previousTask.status !== 'completed')) {
             showNotification('Task completed - password not found', 'warning');
         } else if (task.status === 'cancelled' && (!previousTask || previousTask.status !== 'cancelled')) {
@@ -124,7 +193,6 @@ function setupSocketListeners() {
         }
     });
 
-    // When a task is deleted
     socket.on('task_deleted', (data) => {
         console.log('Task deleted:', data.task_id);
         delete tasks[data.task_id];
@@ -136,23 +204,51 @@ function setupSocketListeners() {
     });
 }
 
+function updateConnectionStatus(connected) {
+    const statusDot = document.querySelector('.status-dot');
+    const statusText = document.getElementById('connection-status');
+    if (connected) {
+        statusDot.style.background = '#10b981';
+        statusText.textContent = 'Connected';
+    } else {
+        statusDot.style.background = '#ef4444';
+        statusText.textContent = 'Disconnected';
+    }
+}
+
 // Event Listeners
 function setupEventListeners() {
-    // Form submission
     document.getElementById('task-form').addEventListener('submit', handleSubmit);
-
-    // Charset preset change
     document.getElementById('charset-preset').addEventListener('change', updateCharsetField);
-
-    // Attack Mode change
     document.getElementById('attack-mode').addEventListener('change', updateAttackModeFields);
-
-    // Algorithm change (for AES options)
     document.getElementById('algorithm').addEventListener('change', updateAlgorithmOptions);
 
+    // AES specific listeners
+    const cipherMode = document.getElementById('cipher-mode');
+    if (cipherMode) {
+        cipherMode.addEventListener('change', updateAESOptions);
+    }
+    
+    const aesKeySize = document.getElementById('aes-key-size');
+    if (aesKeySize) {
+        aesKeySize.addEventListener('change', updateAESOptions);
+    }
+
+    // Knowledge radio buttons
+    document.querySelectorAll('input[name="key-knowledge"]').forEach(radio => {
+        radio.addEventListener('change', updateAESOptions);
+    });
+    document.querySelectorAll('input[name="iv-knowledge"]').forEach(radio => {
+        radio.addEventListener('change', updateAESOptions);
+    });
+    document.querySelectorAll('input[name="plaintext-knowledge"]').forEach(radio => {
+        radio.addEventListener('change', updateAESOptions);
+    });
+
     // Keyspace calculation
-    ['charset-preset', 'charset-custom', 'max-length', 'include-separators'].forEach(id => {
-        document.getElementById(id).addEventListener('input', calculateKeyspace);
+    ['charset-preset', 'charset-custom', 'min-length', 'max-length', 'include-separators'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', calculateKeyspace);
     });
 }
 
@@ -160,38 +256,219 @@ function updateAttackModeFields() {
     const mode = document.getElementById('attack-mode').value;
     const bruteOpts = document.getElementById('brute-force-options');
     const dictOpts = document.getElementById('dictionary-options');
+    const keyspaceInfo = document.getElementById('keyspace-info');
 
     if (mode === 'dictionary') {
         bruteOpts.style.display = 'none';
         dictOpts.style.display = 'block';
+        if (keyspaceInfo) keyspaceInfo.style.display = 'none';
     } else {
         bruteOpts.style.display = 'block';
         dictOpts.style.display = 'none';
+        if (keyspaceInfo) {
+            keyspaceInfo.style.display = 'block';
+            calculateKeyspace();
+        }
     }
 }
 
-// Show/hide AES options based on selected algorithm
-function updateAlgorithmOptions() {
-    const algo = document.getElementById('algorithm').value;
-    const aesOpts = document.getElementById('aes-options');
-    const backendHelp = document.getElementById('backend-help');
-    const backendSelect = document.getElementById('backend');
+// Update AES-specific options based on user selections
+function updateAESOptions() {
+    const cipherMode = document.getElementById('cipher-mode')?.value;
+    const keySize = document.getElementById('aes-key-size')?.value;
+    const keyKnowledge = document.querySelector('input[name="key-knowledge"]:checked')?.value;
+    const ivKnowledge = document.querySelector('input[name="iv-knowledge"]:checked')?.value;
+    const plaintextKnowledge = document.querySelector('input[name="plaintext-knowledge"]:checked')?.value;
     
-    // Show AES options for AES algorithms
-    if (algo && algo.toLowerCase().startsWith('aes')) {
-        aesOpts.style.display = 'block';
+    // Show/hide IV section based on cipher mode
+    const ivKnowledgeSection = document.getElementById('iv-knowledge-section');
+    const ivInputSection = document.getElementById('iv-input-section');
+    const cipherModeHelp = document.getElementById('cipher-mode-help');
+    
+    if (cipherMode === 'ecb') {
+        // ECB doesn't need IV
+        if (ivKnowledgeSection) ivKnowledgeSection.style.display = 'none';
+        if (ivInputSection) ivInputSection.style.display = 'none';
+        if (cipherModeHelp) cipherModeHelp.textContent = 'ECB mode: No IV needed, but less secure';
     } else {
-        aesOpts.style.display = 'none';
+        // CBC and other modes need IV
+        if (ivKnowledgeSection) ivKnowledgeSection.style.display = 'block';
+        if (cipherModeHelp) cipherModeHelp.textContent = 'CBC mode: Requires IV for proper decryption';
+        
+        // Show IV input if user has the IV
+        if (ivKnowledge === 'known') {
+            if (ivInputSection) ivInputSection.style.display = 'block';
+        } else {
+            if (ivInputSection) ivInputSection.style.display = 'none';
+        }
     }
     
-    // Update backend help text based on GPU support
-    const gpuSupported = ['md5', 'sha1', 'sha256', 'sha512'].includes(algo);
-    if (gpuSupported) {
-        backendHelp.textContent = `GPU acceleration available for ${algo.toUpperCase()}`;
-        backendHelp.style.color = '#10b981';  // Green
+    // Show/hide key input based on key knowledge
+    const keyInputSection = document.getElementById('key-input-section');
+    const keyLengthHelp = document.getElementById('key-length-help');
+    if (keyKnowledge === 'known') {
+        if (keyInputSection) keyInputSection.style.display = 'block';
+        // Update key length help based on selected key size
+        const keyBytes = parseInt(keySize) / 8;
+        const keyHexChars = keyBytes * 2;
+        if (keyLengthHelp) keyLengthHelp.textContent = `${keyBytes} bytes (${keyHexChars} hex chars) for AES-${keySize}`;
     } else {
-        backendHelp.textContent = `GPU not available for ${algo ? algo.toUpperCase() : 'this algorithm'} - will use CPU`;
-        backendHelp.style.color = '#f59e0b';  // Yellow/warning
+        if (keyInputSection) keyInputSection.style.display = 'none';
+    }
+    
+    // Show/hide plaintext input
+    const plaintextInputSection = document.getElementById('plaintext-input-section');
+    if (plaintextKnowledge === 'known') {
+        if (plaintextInputSection) plaintextInputSection.style.display = 'block';
+    } else {
+        if (plaintextInputSection) plaintextInputSection.style.display = 'none';
+    }
+    
+    // Update attack strategy info
+    updateAttackStrategy(cipherMode, keyKnowledge, ivKnowledge, plaintextKnowledge);
+}
+
+// Update the attack strategy information panel
+function updateAttackStrategy(cipherMode, keyKnowledge, ivKnowledge, plaintextKnowledge) {
+    const strategyText = document.getElementById('attack-strategy-text');
+    if (!strategyText) return;
+    
+    let strategy = '';
+    let attackType = '';
+    let possible = true;
+    
+    if (keyKnowledge === 'known') {
+        // User has the key - this is decrypt/verify mode
+        if (cipherMode === 'cbc' && ivKnowledge !== 'known') {
+            strategy = 'You have the key. Attack will brute-force the IV to decrypt the ciphertext.';
+            attackType = 'IV Recovery';
+        } else {
+            strategy = 'You have the key and IV. This will decrypt the ciphertext directly (no cracking needed).';
+            attackType = 'Direct Decryption';
+        }
+    } else {
+        // User doesn't have the key - need to crack it
+        if (plaintextKnowledge === 'known') {
+            // Known-Plaintext Attack
+            strategy = 'Known-Plaintext Attack (KPA): Using known plaintext-ciphertext pair to find the key.';
+            attackType = 'Key Recovery (KPA)';
+            
+            if (cipherMode === 'cbc' && ivKnowledge !== 'known') {
+                strategy += ' Note: Without the IV, CBC mode makes this significantly harder.';
+            }
+        } else {
+            // No plaintext - ciphertext-only attack
+            if (cipherMode === 'ecb') {
+                strategy = 'Ciphertext-Only Attack: Will try to identify patterns in ECB mode. Very difficult without known plaintext.';
+                attackType = 'Pattern Analysis';
+            } else {
+                strategy = 'Ciphertext-Only Attack: Very difficult without known plaintext. Consider if you have any partial plaintext knowledge.';
+                attackType = 'Ciphertext-Only';
+                possible = false;
+            }
+        }
+    }
+    
+    strategyText.textContent = strategy;
+    
+    // Update submit button text
+    const submitBtn = document.getElementById('submit-btn');
+    if (submitBtn) {
+        if (!possible) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'More Information Required';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.textContent = `Start ${attackType}`;
+        }
+    }
+}
+
+// Main function to update UI based on selected algorithm
+function updateAlgorithmOptions() {
+    const algo = document.getElementById('algorithm').value;
+    const info = algorithmInfo[algo];
+    
+    // UI Elements
+    const algorithmInfoPanel = document.getElementById('algorithm-info');
+    const hashTargetSection = document.getElementById('hash-target-section');
+    const aesTargetSection = document.getElementById('aes-target-section');
+    const attackModeSection = document.getElementById('attack-mode-section');
+    const backendOptions = document.getElementById('backend-options');
+    const backendHelp = document.getElementById('backend-help');
+    const submitBtn = document.getElementById('submit-btn');
+    const keyspaceInfo = document.getElementById('keyspace-info');
+    
+    // Hide everything first
+    if (algorithmInfoPanel) algorithmInfoPanel.style.display = 'none';
+    if (hashTargetSection) hashTargetSection.style.display = 'none';
+    if (aesTargetSection) aesTargetSection.style.display = 'none';
+    if (attackModeSection) attackModeSection.style.display = 'none';
+    if (backendOptions) backendOptions.style.display = 'none';
+    if (keyspaceInfo) keyspaceInfo.style.display = 'none';
+    document.getElementById('brute-force-options').style.display = 'none';
+    document.getElementById('dictionary-options').style.display = 'none';
+    
+    if (!algo || !info) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Select an Algorithm';
+        return;
+    }
+    
+    // Show algorithm info panel
+    if (algorithmInfoPanel) {
+        algorithmInfoPanel.style.display = 'block';
+        document.getElementById('algorithm-info-title').textContent = `${info.name} - What you need`;
+        document.getElementById('algorithm-info-text').textContent = info.description;
+    }
+    
+    // Show appropriate sections based on algorithm type
+    if (info.type === 'hash') {
+        // Hash algorithms
+        if (hashTargetSection) hashTargetSection.style.display = 'block';
+        if (attackModeSection) attackModeSection.style.display = 'block';
+        
+        const targetLabel = document.querySelector('label[for="target"]');
+        if (targetLabel) targetLabel.textContent = info.targetLabel;
+        document.getElementById('target').placeholder = info.targetPlaceholder;
+        const targetExample = document.getElementById('target-example');
+        if (targetExample) targetExample.textContent = info.targetExample;
+        
+        const attackModeHelp = document.getElementById('attack-mode-help');
+        if (attackModeHelp) attackModeHelp.textContent = 
+            'Brute Force: Try all character combinations | Dictionary: Use common passwords';
+        
+        updateAttackModeFields();
+        
+        submitBtn.disabled = false;
+        submitBtn.textContent = `Start ${info.name} Attack`;
+        
+    } else if (info.type === 'symmetric') {
+        // Symmetric encryption (AES, DES, etc.)
+        if (aesTargetSection) aesTargetSection.style.display = 'block';
+        if (attackModeSection) attackModeSection.style.display = 'block';
+        
+        const attackModeHelp = document.getElementById('attack-mode-help');
+        if (attackModeHelp) attackModeHelp.textContent = 
+            'Brute Force: Try key combinations | Dictionary: Use common keys/passwords';
+        
+        // Initialize AES-specific options
+        updateAESOptions();
+        updateAttackModeFields();
+    }
+    
+    // Show backend options
+    if (backendOptions) backendOptions.style.display = 'block';
+    
+    // Update backend help text
+    if (backendHelp) {
+        if (info.gpuSupported) {
+            backendHelp.textContent = `GPU acceleration available for ${info.name}`;
+            backendHelp.style.color = '#10b981';
+        } else {
+            backendHelp.textContent = `GPU not available for ${info.name} - will use CPU`;
+            backendHelp.style.color = '#f59e0b';
+        }
     }
 }
 
@@ -199,28 +476,35 @@ function updateAlgorithmOptions() {
 async function handleSubmit(e) {
     e.preventDefault();
 
+    const algo = document.getElementById('algorithm').value;
+    const info = algorithmInfo[algo];
+    
+    if (!algo || !info) {
+        showNotification('Please select an algorithm', 'error');
+        return;
+    }
+
     const charset = getCharset();
     const maxLen = parseInt(document.getElementById('max-length').value);
     const minLen = parseInt(document.getElementById('min-length').value);
     const attackMode = document.getElementById('attack-mode').value;
     const wordlist = document.getElementById('wordlist').value;
+    const backendSelection = document.getElementById('backend').value;
 
-    // Calculate total keyspace for all lengths from min to max
+    // Calculate total keyspace
     let totalKeyspace = 0;
     if (attackMode === 'brute') {
         for (let len = minLen; len <= maxLen; len++) {
             totalKeyspace += Math.pow(charset.length, len);
         }
     } else {
-        totalKeyspace = 1000000; // Estimated
+        totalKeyspace = 1000000;
     }
 
-    const backendSelection = document.getElementById('backend').value;
-
+    // Build form data
     const formData = {
-        algorithm: document.getElementById('algorithm').value,
+        algorithm: algo,
         attack_mode: attackMode,
-        target: document.getElementById('target').value.trim(),
         charset: charset,
         min_length: minLen,
         max_length: maxLen,
@@ -229,14 +513,95 @@ async function handleSubmit(e) {
         backend: backendSelection
     };
 
-    // Add AES key size if AES algorithm is selected
-    const algo = formData.algorithm.toLowerCase();
-    if (algo.startsWith('aes')) {
-        formData.aes_key_size = parseInt(document.getElementById('aes-key-size').value);
+    // Handle based on algorithm type
+    if (info.type === 'hash') {
+        const target = document.getElementById('target').value.trim();
+        formData.target = target;
+        
+        if (target.length !== info.hashLength) {
+            showNotification(`Invalid ${info.name} hash length. Expected ${info.hashLength} characters, got ${target.length}`, 'error');
+            return;
+        }
+        
+        if (!/^[a-fA-F0-9]+$/.test(target)) {
+            showNotification('Hash must contain only hexadecimal characters (0-9, a-f)', 'error');
+            return;
+        }
+        
+    } else if (info.type === 'symmetric') {
+        // Symmetric encryption
+        const keySize = parseInt(document.getElementById('aes-key-size').value);
+        const cipherMode = document.getElementById('cipher-mode').value;
+        const padding = document.getElementById('padding').value;
+        const ciphertext = document.getElementById('aes-ciphertext').value.trim();
+        
+        const keyKnowledge = document.querySelector('input[name="key-knowledge"]:checked')?.value;
+        const ivKnowledge = document.querySelector('input[name="iv-knowledge"]:checked')?.value;
+        const plaintextKnowledge = document.querySelector('input[name="plaintext-knowledge"]:checked')?.value;
+        
+        // Validate ciphertext
+        if (!ciphertext || ciphertext.length !== 32) {
+            showNotification('Ciphertext must be 32 hex characters (16 bytes)', 'error');
+            return;
+        }
+        
+        if (!/^[a-fA-F0-9]+$/.test(ciphertext)) {
+            showNotification('Ciphertext must contain only hexadecimal characters', 'error');
+            return;
+        }
+        
+        formData.target = ciphertext;
+        formData.aes_key_size = keySize;
+        formData.cipher_mode = cipherMode;
+        formData.padding = padding;
+        formData.key_knowledge = keyKnowledge;
+        formData.iv_knowledge = ivKnowledge;
+        formData.plaintext_knowledge = plaintextKnowledge;
+        
+        // Add known values if user has them
+        if (keyKnowledge === 'known') {
+            const key = document.getElementById('aes-key').value.trim();
+            const expectedKeyLen = (keySize / 8) * 2; // hex chars
+            if (!key || key.length !== expectedKeyLen) {
+                showNotification(`Key must be ${expectedKeyLen} hex characters for AES-${keySize}`, 'error');
+                return;
+            }
+            if (!/^[a-fA-F0-9]+$/.test(key)) {
+                showNotification('Key must contain only hexadecimal characters', 'error');
+                return;
+            }
+            formData.aes_key = key;
+        }
+        
+        if (cipherMode !== 'ecb' && ivKnowledge === 'known') {
+            const iv = document.getElementById('aes-iv').value.trim();
+            if (!iv || iv.length !== 32) {
+                showNotification('IV must be 32 hex characters (16 bytes)', 'error');
+                return;
+            }
+            if (!/^[a-fA-F0-9]+$/.test(iv)) {
+                showNotification('IV must contain only hexadecimal characters', 'error');
+                return;
+            }
+            formData.aes_iv = iv;
+        }
+        
+        if (plaintextKnowledge === 'known') {
+            const plaintext = document.getElementById('aes-plaintext').value.trim();
+            if (!plaintext || plaintext.length !== 32) {
+                showNotification('Plaintext must be 32 hex characters (16 bytes)', 'error');
+                return;
+            }
+            if (!/^[a-fA-F0-9]+$/.test(plaintext)) {
+                showNotification('Plaintext must contain only hexadecimal characters', 'error');
+                return;
+            }
+            formData.aes_plaintext = plaintext;
+        }
     }
 
-    // Validation
-    if (!formData.algorithm || !formData.target) {
+    // Final validation
+    if (!formData.target) {
         showNotification('Please fill in all required fields', 'error');
         return;
     }
@@ -252,17 +617,18 @@ async function handleSubmit(e) {
 
         if (response.ok) {
             const task = await response.json();
-            // Add task to local state and render it
             tasks[task.task_id] = task;
             renderTask(task);
             updateStats();
             
             showNotification('Task submitted successfully!', 'success');
+            const savedAlgo = document.getElementById('algorithm').value;
             document.getElementById('task-form').reset();
-            updateCharsetField();
-            calculateKeyspace();
+            document.getElementById('algorithm').value = savedAlgo;
+            updateAlgorithmOptions();
         } else {
-            showNotification('Failed to submit task', 'error');
+            const errData = await response.json().catch(() => ({}));
+            showNotification(errData.error || 'Failed to submit task', 'error');
         }
     } catch (error) {
         console.error('Submit error:', error);
@@ -280,10 +646,9 @@ function getCharset() {
         charset = preset;
     }
     
-    // Add separators if checkbox is checked
     const includeSeparators = document.getElementById('include-separators')?.checked;
     if (includeSeparators) {
-        charset += ' _-';  // space, underscore, dash
+        charset += ' _-';
     }
     
     return charset;
@@ -306,13 +671,17 @@ function updateCharsetField() {
 // Calculate keyspace size
 function calculateKeyspace() {
     const charset = getCharset();
-    const length = parseInt(document.getElementById('max-length').value) || 0;
+    const minLen = parseInt(document.getElementById('min-length').value) || 1;
+    const maxLen = parseInt(document.getElementById('max-length').value) || 6;
 
-    if (charset && length > 0) {
-        const size = Math.pow(charset.length, length);
-        const formatted = formatNumber(size);
+    if (charset && maxLen > 0) {
+        let total = 0;
+        for (let len = minLen; len <= maxLen; len++) {
+            total += Math.pow(charset.length, len);
+        }
+        const formatted = formatNumber(total);
         document.getElementById('keyspace-size').textContent =
-            `Keyspace: ${formatted} combinations (${charset.length}^${length})`;
+            `Keyspace: ${formatted} combinations (lengths ${minLen}-${maxLen})`;
     } else {
         document.getElementById('keyspace-size').textContent = 'Keyspace: Calculating...';
     }
@@ -322,14 +691,12 @@ function calculateKeyspace() {
 function renderTask(task) {
     const container = document.getElementById('tasks-container');
     
-    // Check if card already exists - if so, update instead of creating
     const existingCard = document.getElementById(`task-${task.task_id}`);
     if (existingCard) {
         existingCard.innerHTML = getTaskHTML(task);
         return;
     }
 
-    // Remove empty state
     const emptyState = container.querySelector('.empty-state');
     if (emptyState) {
         emptyState.remove();
@@ -353,7 +720,6 @@ function updateTaskCard(task) {
 
 // Generate task HTML
 function getTaskHTML(task) {
-    console.log('Task backend value:', task.backend, 'Full task:', task);
     const statusClass = `status-${task.status}`;
     const statusText = task.status.toUpperCase();
     const backend = task.backend || 'CPU';
@@ -365,7 +731,7 @@ function getTaskHTML(task) {
         const iterations = task.iterations || task.keyspace?.total || 0;
         resultHTML = `
             <div class="task-result">
-                <div class="result-label">Recovered Plaintext</div>
+                <div class="result-label">Recovered Value</div>
                 <div class="result-value">${escapeHtml(task.result)}</div>
                 ${task.duration ? `<div class="help-text">Found in ${task.duration.toFixed(2)}s (${formatNumber(iterations)} iterations)</div>` : ''}
             </div>
@@ -373,7 +739,25 @@ function getTaskHTML(task) {
     }
 
     const keyspaceTotal = task.keyspace?.total || 0;
-    const progress = task.progress || 0;
+    
+    // Additional info for symmetric encryption
+    let extraInfo = '';
+    if (task.cipher_mode) {
+        extraInfo += `
+            <div class="task-row">
+                <span class="task-label">Cipher Mode:</span>
+                <span class="task-value">${task.cipher_mode.toUpperCase()}</span>
+            </div>
+        `;
+    }
+    if (task.padding) {
+        extraInfo += `
+            <div class="task-row">
+                <span class="task-label">Padding:</span>
+                <span class="task-value">${task.padding.toUpperCase()}</span>
+            </div>
+        `;
+    }
 
     return `
         <div class="task-header">
@@ -392,6 +776,7 @@ function getTaskHTML(task) {
                 <span class="task-label">Attack Mode:</span>
                 <span class="task-value">${attackMode.charAt(0).toUpperCase() + attackMode.slice(1)}</span>
             </div>
+            ${extraInfo}
             <div class="task-row">
                 <span class="task-label">Target:</span>
                 <span class="task-value">${task.target.substring(0, 32)}${task.target.length > 32 ? '...' : ''}</span>
@@ -485,15 +870,13 @@ function escapeHtml(text) {
 function showNotification(message, type = 'info') {
     console.log(`[${type.toUpperCase()}] ${message}`);
 
-    // Create toast notification
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `
         <span class="toast-message">${escapeHtml(message)}</span>
-        <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+        <button class="toast-close" onclick="this.parentElement.remove()">x</button>
     `;
     
-    // Add to page or create container
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
@@ -502,7 +885,13 @@ function showNotification(message, type = 'info') {
         document.body.appendChild(container);
     }
     
-    // Style the toast
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
     toast.style.cssText = `
         padding: 12px 20px;
         border-radius: 8px;
@@ -512,12 +901,11 @@ function showNotification(message, type = 'info') {
         gap: 10px;
         animation: slideIn 0.3s ease;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+        background: ${colors[type] || colors.info};
     `;
     
     container.appendChild(toast);
     
-    // Auto-remove after 5 seconds
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => toast.remove(), 300);

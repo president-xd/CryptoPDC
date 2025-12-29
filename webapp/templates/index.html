@@ -26,56 +26,171 @@
         <main class="main-content">
             <!-- Task Submission Panel -->
             <section class="panel task-submission">
-                <h2 class="panel-title">
-                    Submit Cracking Task
-                </h2>
+                <h2 class="panel-title">Submit Cracking Task</h2>
 
                 <form id="task-form" class="form">
+                    <!-- Step 1: Algorithm Selection -->
                     <div class="form-group">
                         <label for="algorithm">Algorithm</label>
                         <select id="algorithm" name="algorithm" class="input-field" required>
                             <option value="">Select Algorithm...</option>
                         </select>
+                        <small class="help-text" id="algorithm-help">Choose the algorithm to crack</small>
                     </div>
 
-                    <div class="form-group">
+                    <!-- Algorithm Description Panel -->
+                    <div id="algorithm-info" class="info-panel" style="display: none;">
+                        <div class="info-header">
+                            <span class="info-icon">[i]</span>
+                            <span id="algorithm-info-title">What you need</span>
+                        </div>
+                        <p id="algorithm-info-text"></p>
+                    </div>
+
+                    <!-- ====== HASH ALGORITHMS SECTION ====== -->
+                    <div id="hash-target-section" class="form-group" style="display: none;">
+                        <label for="target">Target Hash</label>
+                        <input type="text" id="target" name="target" class="input-field"
+                            placeholder="Enter the hash to crack">
+                        <small class="help-text" id="target-help">Paste the hash value you want to crack</small>
+                        <small class="help-text" id="target-example" style="color: #6b7280;"></small>
+                    </div>
+
+                    <!-- ====== AES/SYMMETRIC SECTION ====== -->
+                    <div id="aes-target-section" style="display: none;">
+                        <!-- AES Key Size -->
+                        <div class="form-group">
+                            <label for="aes-key-size">Key Size</label>
+                            <select id="aes-key-size" name="aes-key-size" class="input-field">
+                                <option value="128">AES-128 (16-byte key)</option>
+                                <option value="192">AES-192 (24-byte key)</option>
+                                <option value="256">AES-256 (32-byte key)</option>
+                            </select>
+                            <small class="help-text">Select the encryption key size</small>
+                        </div>
+
+                        <!-- Cipher Mode -->
+                        <div class="form-group">
+                            <label for="cipher-mode">Cipher Mode</label>
+                            <select id="cipher-mode" name="cipher-mode" class="input-field">
+                                <option value="ecb">ECB (Electronic Codebook)</option>
+                                <option value="cbc">CBC (Cipher Block Chaining)</option>
+                            </select>
+                            <small class="help-text" id="cipher-mode-help">ECB: No IV needed | CBC: Requires IV</small>
+                        </div>
+
+                        <!-- Padding -->
+                        <div class="form-group">
+                            <label for="padding">Padding</label>
+                            <select id="padding" name="padding" class="input-field">
+                                <option value="none">No Padding (exact block size)</option>
+                                <option value="pkcs7">PKCS7 Padding</option>
+                            </select>
+                            <small class="help-text">How the plaintext is padded to block size</small>
+                        </div>
+
+                        <!-- What User Knows Section -->
+                        <div class="knowledge-section">
+                            <h4 class="section-subtitle">What do you have?</h4>
+                            
+                            <!-- Key Knowledge -->
+                            <div class="form-group knowledge-group">
+                                <label>Encryption Key</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="key-knowledge" value="known">
+                                        <span>I have the key</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="key-knowledge" value="unknown" checked>
+                                        <span>Unknown (need to crack)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- Key Input (shown when user has key) -->
+                            <div id="key-input-section" class="form-group" style="display: none;">
+                                <label for="aes-key">Known Key (hex)</label>
+                                <input type="text" id="aes-key" name="aes-key" class="input-field"
+                                    placeholder="e.g., 00112233445566778899aabbccddeeff">
+                                <small class="help-text" id="key-length-help">Enter key in hexadecimal</small>
+                            </div>
+
+                            <!-- IV Knowledge (shown for CBC mode) -->
+                            <div id="iv-knowledge-section" class="form-group knowledge-group" style="display: none;">
+                                <label>Initialization Vector (IV)</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="iv-knowledge" value="known" checked>
+                                        <span>I have the IV</span>
+                                    </label>
+                                    <label class="radio-label">
+                                        <input type="radio" name="iv-knowledge" value="unknown">
+                                        <span>Unknown (need to crack)</span>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <!-- IV Input (shown when user has IV and mode requires it) -->
+                            <div id="iv-input-section" class="form-group" style="display: none;">
+                                <label for="aes-iv">IV (hex)</label>
+                                <input type="text" id="aes-iv" name="aes-iv" class="input-field"
+                                    placeholder="e.g., 00112233445566778899aabbccddeeff">
+                                <small class="help-text">16 bytes (32 hex chars) - Initialization Vector</small>
+                            </div>
+
+                            <!-- Plaintext Knowledge -->
+                            <div class="form-group knowledge-group">
+                                <label>Plaintext (REQUIRED for key recovery)</label>
+                                <div class="radio-group">
+                                    <label class="radio-label">
+                                        <input type="radio" name="plaintext-knowledge" value="known" checked>
+                                        <span>I have the plaintext</span>
+                                    </label>
+                                    <label class="radio-label" style="opacity: 0.5;" title="Cannot crack without known plaintext">
+                                        <input type="radio" name="plaintext-knowledge" value="unknown" disabled>
+                                        <span>Unknown (not supported)</span>
+                                    </label>
+                                </div>
+                                <small class="help-text" style="color: #f59e0b;">⚠️ AES key cracking requires known plaintext. This is a known-plaintext attack.</small>
+                            </div>
+                            
+                            <!-- Plaintext Input -->
+                            <div id="plaintext-input-section" class="form-group">
+                                <label for="aes-plaintext">Known Plaintext (hex) - REQUIRED</label>
+                                <input type="text" id="aes-plaintext" name="aes-plaintext" class="input-field" required
+                                    placeholder="e.g., 48656c6c6f576f726c6421212121212121">
+                                <small class="help-text">16 bytes (32 hex chars) - the original data BEFORE encryption</small>
+                                <small class="help-text" style="color: #6b7280;">Tip: "HelloWorld!!!!!!" in hex = 48656c6c6f576f726c6421212121212121</small>
+                            </div>
+                        </div>
+
+                        <!-- Ciphertext (always required for AES) -->
+                        <div class="form-group">
+                            <label for="aes-ciphertext">Ciphertext (hex) - REQUIRED</label>
+                            <input type="text" id="aes-ciphertext" name="target" class="input-field" required
+                                placeholder="e.g., 69c4e0d86a7b0430d8cdb78070b4c55a">
+                            <small class="help-text">16 bytes (32 hex chars) - the encrypted result you want to crack</small>
+                        </div>
+
+                        <!-- Attack Strategy Info -->
+                        <div id="attack-strategy-info" class="info-panel strategy-panel">
+                            <div class="info-header">
+                                <span class="info-icon">[?]</span>
+                                <span>Attack Strategy</span>
+                            </div>
+                            <p id="attack-strategy-text">Known-Plaintext Attack: We will try different keys to encrypt the known plaintext and compare with the ciphertext to find the correct key.</p>
+                        </div>
+                    </div>
+
+                    <!-- ====== ATTACK MODE SECTION ====== -->
+                    <div id="attack-mode-section" class="form-group" style="display: none;">
                         <label for="attack-mode">Attack Mode</label>
                         <select id="attack-mode" name="attack-mode" class="input-field" required>
                             <option value="brute">Brute Force</option>
                             <option value="dictionary">Dictionary Attack</option>
-                            <option value="hybrid">Hybrid (Dictionary + Rules)</option>
-                            <option value="mask">Mask Attack</option>
                         </select>
-                        <small class="help-text">Brute force tries all combinations, dictionary uses wordlists</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="target">Target Hash / Encrypted Text</label>
-                        <input type="text" id="target" name="target" class="input-field"
-                            placeholder="e.g., 5d41402abc4b2a76b9719d911017c592" required>
-                        <small class="help-text">Enter the hash you want to crack</small>
-                    </div>
-
-                    <!-- Backend Selection (CPU/GPU) -->
-                    <div id="backend-options" class="form-group">
-                        <label for="backend">Processing Backend</label>
-                        <select id="backend" name="backend" class="input-field">
-                            <option value="auto">Auto (GPU if available)</option>
-                            <option value="gpu">GPU (CUDA)</option>
-                            <option value="cpu">CPU (OpenMP)</option>
-                        </select>
-                        <small class="help-text" id="backend-help">GPU is faster for supported algorithms</small>
-                    </div>
-
-                    <!-- AES Options -->
-                    <div id="aes-options" class="form-group" style="display: none;">
-                        <label for="aes-key-size">AES Key Size</label>
-                        <select id="aes-key-size" name="aes-key-size" class="input-field">
-                            <option value="128">AES-128 (128 bits)</option>
-                            <option value="192">AES-192 (192 bits)</option>
-                            <option value="256">AES-256 (256 bits)</option>
-                        </select>
-                        <small class="help-text">Select the AES key size for the attack</small>
+                        <small class="help-text" id="attack-mode-help">Choose how to search for the password</small>
                     </div>
 
                     <!-- Dictionary Options -->
@@ -84,20 +199,20 @@
                         <select id="wordlist" name="wordlist" class="input-field">
                             <option value="wordlist.txt">Loading wordlists...</option>
                         </select>
-                        <small class="help-text">Select a wordlist for dictionary attack</small>
+                        <small class="help-text">Common passwords and words to try</small>
                     </div>
 
                     <!-- Brute Force Options -->
-                    <div id="brute-force-options">
+                    <div id="brute-force-options" style="display: none;">
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="charset">Character Set</label>
                                 <select id="charset-preset" class="input-field">
                                     <option value="abcdefghijklmnopqrstuvwxyz">Lowercase (a-z)</option>
                                     <option value="ABCDEFGHIJKLMNOPQRSTUVWXYZ">Uppercase (A-Z)</option>
-                                    <option value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ">Mixed Case
-                                    </option>
+                                    <option value="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ">Mixed Case</option>
                                     <option value="abcdefghijklmnopqrstuvwxyz0123456789">Alphanumeric</option>
+                                    <option value="0123456789abcdef">Hex (0-9, a-f)</option>
                                     <option value="custom">Custom...</option>
                                 </select>
                             </div>
@@ -110,7 +225,7 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="min-length">Min Length</label>
+                                <label for="min-length" id="length-label">Password Length (Min)</label>
                                 <input type="number" id="min-length" class="input-field" value="1" min="1" max="12">
                             </div>
                             <div class="form-group">
@@ -127,12 +242,23 @@
                         </div>
                     </div>
 
-                    <div class="keyspace-info">
+                    <!-- Backend Selection (CPU/GPU) -->
+                    <div id="backend-options" class="form-group" style="display: none;">
+                        <label for="backend">Processing Backend</label>
+                        <select id="backend" name="backend" class="input-field">
+                            <option value="auto">Auto (GPU if available)</option>
+                            <option value="gpu">GPU (CUDA) - Faster</option>
+                            <option value="cpu">CPU (OpenMP)</option>
+                        </select>
+                        <small class="help-text" id="backend-help">GPU is faster for supported algorithms</small>
+                    </div>
+
+                    <div class="keyspace-info" id="keyspace-info" style="display: none;">
                         <span id="keyspace-size">Keyspace: Calculating...</span>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">
-                        Start Attack
+                    <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                        Select an Algorithm
                     </button>
                 </form>
             </section>

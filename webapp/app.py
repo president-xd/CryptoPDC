@@ -23,6 +23,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 tasks = {}
 task_queue = None
 result_collector = None
+local_worker_thread = None
 
 def result_handler(msg):
     """Handle results from workers"""
@@ -47,6 +48,162 @@ def result_handler(msg):
         # Broadcast to all connected clients (use socketio.emit with namespace for background thread)
         socketio.emit('task_update', tasks[task_id], namespace='/')
         print(f"Emitted task_update for {task_id}")
+
+def generate_candidates(charset, length, batch_size=100000):
+    """Generate candidate keys for brute force"""
+    from itertools import product
+    candidates = []
+    for combo in product(charset, repeat=length):
+        candidates.append(''.join(combo))
+        if len(candidates) >= batch_size:
+            yield candidates
+            candidates = []
+    if candidates:
+        yield candidates
+
+def process_task_locally(task):
+    """Process a task locally using the C++ bindings"""
+    task_id = task.get('task_id')
+    algo = task.get('algorithm')
+    target = task.get('target')  # For hash: hash to crack; For AES: ciphertext
+    attack_mode = task.get('attack_mode', 'brute')
+    backend = task.get('backend_selection', 'auto')
+    
+    keyspace = task.get('keyspace', {})
+    charset = keyspace.get('charset', 'abcdefghijklmnopqrstuvwxyz')
+    min_length = keyspace.get('min_length', 1)
+    max_length = keyspace.get('max_length', 6)
+    wordlist = keyspace.get('wordlist', 'wordlist.txt')
+    
+    # AES specific params
+    aes_key_size = task.get('aes_key_size', 128)
+    plaintext = task.get('plaintext', '')  # Known plaintext for AES attack
+    
+    print(f"Local worker processing task {task_id}: {algo} {attack_mode}")
+    
+    # Update status to running
+    if task_id in tasks:
+        tasks[task_id]['status'] = 'running'
+        socketio.emit('task_update', tasks[task_id], namespace='/')
+    
+    start_time = time.time()
+    found = False
+    result = ""
+    total_iterations = 0
+    
+    try:
+        if algo == 'aes':
+            # AES key cracking - requires both plaintext and ciphertext
+            if not plaintext:
+                raise ValueError("AES cracking requires known plaintext. This is a known-plaintext attack.")
+            
+            ciphertext = target  # The target is the ciphertext
+            key_bytes = aes_key_size // 8  # 16, 24, or 32 bytes
+            
+            print(f"  AES-{aes_key_size} known-plaintext attack")
+            print(f"  Plaintext: {plaintext[:32]}...")
+            print(f"  Ciphertext: {ciphertext[:32]}...")
+            
+            # For AES, we generate candidate keys and test them
+            # Key must be exactly key_bytes long, so we pad short keys
+            for length in range(min_length, max_length + 1):
+                if found:
+                    break
+                
+                iter_count = len(charset) ** length
+                print(f"  Trying key length {length} ({iter_count} combinations)...")
+                
+                # Generate candidates in batches
+                batch_size = min(100000, iter_count)
+                for batch in generate_candidates(charset, length, batch_size):
+                    if found:
+                        break
+                    
+                    # Pad keys to required length (repeat or pad with zeros)
+                    padded_candidates = []
+                    for cand in batch:
+                        # Convert to hex and pad to key_bytes * 2 hex chars
+                        key_hex = cand.encode().hex()
+                        if len(key_hex) < key_bytes * 2:
+                            key_hex = key_hex + '00' * (key_bytes - len(key_hex) // 2)
+                        padded_candidates.append(key_hex[:key_bytes * 2])
+                    
+                    try:
+                        if aes_key_size == 128:
+                            found_key = core.cuda_crack_aes128(plaintext, ciphertext, padded_candidates)
+                        elif aes_key_size == 192:
+                            found_key = core.cuda_crack_aes192(plaintext, ciphertext, padded_candidates)
+                        else:
+                            found_key = core.cuda_crack_aes256(plaintext, ciphertext, padded_candidates)
+                        
+                        if found_key:
+                            found = True
+                            # Convert hex key back to original
+                            result = bytes.fromhex(found_key).decode('utf-8', errors='ignore').rstrip('\x00')
+                            print(f"  Found key: {result} (hex: {found_key})")
+                            break
+                    except Exception as e:
+                        print(f"  AES crack error: {e}")
+                    
+                    total_iterations += len(batch)
+                    
+        elif attack_mode == 'dictionary':
+            # Dictionary attack using CPU
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            wordlist_path = os.path.join(base_dir, 'wordlists', wordlist)
+            if not os.path.exists(wordlist_path):
+                wordlist_path = os.path.join(base_dir, wordlist)
+            
+            print(f"Dictionary attack using: {wordlist_path}")
+            found, result, total_iterations = core.crack_dictionary(algo, target, wordlist_path)
+        else:
+            # Brute force attack for hash algorithms
+            gpu_algos = ['md5', 'sha1', 'sha256', 'sha512']
+            use_gpu = (backend == 'gpu' or (backend == 'auto' and algo in gpu_algos)) and backend != 'cpu'
+            
+            for length in range(min_length, max_length + 1):
+                if found:
+                    break
+                    
+                iter_count = len(charset) ** length
+                print(f"  Trying length {length} ({iter_count} combinations)...")
+                
+                if use_gpu and algo == 'md5' and hasattr(core, 'cuda_crack_md5'):
+                    found, result = core.cuda_crack_md5(target, charset, length, 0, iter_count, 0)
+                elif use_gpu and algo == 'sha1' and hasattr(core, 'cuda_crack_sha1'):
+                    found, result = core.cuda_crack_sha1(target, charset, length, 0, iter_count, 0)
+                elif use_gpu and algo == 'sha256' and hasattr(core, 'cuda_crack_sha256'):
+                    found, result = core.cuda_crack_sha256(target, charset, length, 0, iter_count, 0)
+                elif use_gpu and algo == 'sha512' and hasattr(core, 'cuda_crack_sha512'):
+                    found, result = core.cuda_crack_sha512(target, charset, length, 0, iter_count, 0)
+                else:
+                    # CPU fallback
+                    print(f"  Using CPU mode for {algo}")
+                    pass
+                
+                total_iterations += iter_count
+        
+        duration = time.time() - start_time
+        status = 'found' if found else 'completed'
+        
+        print(f"Task {task_id} {status}: result='{result}' in {duration:.2f}s")
+        
+        # Update task
+        if task_id in tasks:
+            tasks[task_id]['status'] = status
+            tasks[task_id]['result'] = result if found else None
+            tasks[task_id]['duration'] = duration
+            tasks[task_id]['iterations'] = total_iterations
+            tasks[task_id]['worker_id'] = 'local'
+            tasks[task_id]['completed_at'] = datetime.now().isoformat()
+            socketio.emit('task_update', tasks[task_id], namespace='/')
+            
+    except Exception as e:
+        print(f"Error processing task {task_id}: {e}")
+        if task_id in tasks:
+            tasks[task_id]['status'] = 'error'
+            tasks[task_id]['error'] = str(e)
+            socketio.emit('task_update', tasks[task_id], namespace='/')
 
 def init_infrastructure():
     """Initialize task queue and result collector"""
@@ -102,7 +259,7 @@ def get_algorithms():
             'name': 'AES',
             'type': 'Symmetric',
             'output_size': '128/192/256-bit',
-            'gpu_supported': False,
+            'gpu_supported': True,
             'key_sizes': [128, 192, 256]
         },
         {
@@ -145,7 +302,11 @@ def get_tasks():
 @app.route('/api/tasks', methods=['POST'])
 def submit_task():
     """Submit a new cracking task"""
+    print("=== SUBMIT_TASK CALLED ===")
+    print(f"Request method: {request.method}")
+    print(f"Request data: {request.data}")
     data = request.json
+    print(f"Parsed JSON: {data}")
     
     task_id = str(uuid.uuid4())
     
@@ -155,8 +316,23 @@ def submit_task():
     max_len = data.get('max_length', 6)
     attack_mode = data.get('attack_mode', 'brute')
     wordlist = data.get('wordlist', 'wordlist.txt')
-    aes_key_size = data.get('aes_key_size', 128)  # AES key size (128, 192, 256)
-    backend_selection = data.get('backend', 'auto')  # User selected: auto, gpu, or cpu
+    backend_selection = data.get('backend', 'auto')
+    
+    # Algorithm-specific parameters
+    algorithm = data.get('algorithm')
+    aes_key_size = data.get('aes_key_size', 128)
+    cipher_mode = data.get('cipher_mode', 'ecb')
+    padding = data.get('padding', 'none')
+    
+    # Knowledge states for symmetric encryption
+    key_knowledge = data.get('key_knowledge', 'unknown')
+    iv_knowledge = data.get('iv_knowledge', 'known')
+    plaintext_knowledge = data.get('plaintext_knowledge', 'known')
+    
+    # Known values
+    aes_key = data.get('aes_key', '')
+    aes_iv = data.get('aes_iv', '')
+    aes_plaintext = data.get('aes_plaintext', '')
     
     # Calculate total keyspace for all lengths
     total_keyspace = 0
@@ -164,23 +340,22 @@ def submit_task():
         for length in range(min_len, max_len + 1):
             total_keyspace += len(charset) ** length
     else:
-        # For dictionary or hybrid, keyspace is approximate or file size
-        total_keyspace = 1000000 # dummy value
+        total_keyspace = 1000000
     
     # Determine algorithm name with key size for AES
-    algorithm = data.get('algorithm')
     algorithm_display = algorithm
     if algorithm and algorithm.lower() == 'aes':
         algorithm_display = f"AES-{aes_key_size}"
     
-    # Determine backend display based on user selection and algorithm support
-    gpu_supported_algos = ['md5', 'sha1', 'sha256', 'sha512']
+    # Determine backend based on user selection and algorithm support
+    gpu_supported_algos = ['md5', 'sha1', 'sha256', 'sha512', 'aes']
     print(f"DEBUG: backend_selection={backend_selection}, algorithm={algorithm}")
+    
     if backend_selection == 'gpu':
         backend_display = 'GPU'
     elif backend_selection == 'cpu':
         backend_display = 'CPU'
-    else:  # auto
+    else:
         backend_display = 'GPU' if algorithm in gpu_supported_algos else 'CPU'
     print(f"DEBUG: backend_display={backend_display}")
     
@@ -188,7 +363,6 @@ def submit_task():
         'task_id': task_id,
         'algorithm': algorithm,
         'algorithm_display': algorithm_display,
-        'aes_key_size': aes_key_size if algorithm and algorithm.lower() == 'aes' else None,
         'attack_mode': attack_mode,
         'target': data.get('target'),
         'status': 'queued',
@@ -197,7 +371,7 @@ def submit_task():
         'result': None,
         'worker_id': None,
         'backend': backend_display,
-        'backend_selection': backend_selection,  # Store the user's actual selection
+        'backend_selection': backend_selection,
         'keyspace': {
             'charset': charset,
             'min_length': min_len,
@@ -209,13 +383,32 @@ def submit_task():
         }
     }
     
+    # Add symmetric encryption specific fields
+    if algorithm and algorithm.lower() in ['aes', 'des', '3des']:
+        task['aes_key_size'] = aes_key_size
+        task['cipher_mode'] = cipher_mode
+        task['padding'] = padding
+        task['key_knowledge'] = key_knowledge
+        task['iv_knowledge'] = iv_knowledge
+        task['plaintext_knowledge'] = plaintext_knowledge
+        
+        # Add known values if provided
+        if key_knowledge == 'known' and aes_key:
+            task['aes_key'] = aes_key
+        if iv_knowledge == 'known' and aes_iv:
+            task['aes_iv'] = aes_iv
+        if plaintext_knowledge == 'known' and aes_plaintext:
+            task['plaintext'] = aes_plaintext
+    
     tasks[task_id] = task
     
-    # Push to queue
-    task_queue.push(task)
-    
-    # Broadcast to clients
+    # Broadcast to clients that task was created
     socketio.emit('task_created', task)
+    
+    # Process task locally in a background thread
+    worker_thread = threading.Thread(target=process_task_locally, args=(task,))
+    worker_thread.daemon = True
+    worker_thread.start()
     
     return jsonify(task), 201
 
