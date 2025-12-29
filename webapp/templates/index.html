@@ -28,7 +28,7 @@
             <section class="panel task-submission">
                 <h2 class="panel-title">Submit Cracking Task</h2>
 
-                <form id="task-form" class="form">
+                <form id="task-form" class="form" onsubmit="return false;" action="javascript:void(0);">
                     <!-- Step 1: Algorithm Selection -->
                     <div class="form-group">
                         <label for="algorithm">Algorithm</label>
@@ -257,7 +257,7 @@
                         <span id="keyspace-size">Keyspace: Calculating...</span>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                    <button type="button" class="btn btn-primary" id="submit-btn" onclick="handleSubmit(event)" disabled>
                         Select an Algorithm
                     </button>
                 </form>
