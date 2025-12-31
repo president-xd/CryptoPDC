@@ -4,9 +4,8 @@ This guide provides step-by-step instructions for installing and running CryptoP
 
 ## Table of Contents
 - [System Requirements](#system-requirements)
-- [Prerequisites](#prerequisites)
-- [Quick Start](#quick-start)
-- [Detailed Installation](#detailed-installation)
+- [Quick Start (TL;DR)](#quick-start-tldr)
+- [Step-by-Step Installation](#step-by-step-installation)
 - [Running the Application](#running-the-application)
 - [Troubleshooting](#troubleshooting)
 
@@ -22,384 +21,334 @@ This guide provides step-by-step instructions for installing and running CryptoP
 | GPU | NVIDIA (CUDA 6.0+) | NVIDIA RTX series |
 | Storage | 10 GB | 20+ GB |
 
-### Operating System
-- **Linux**: Ubuntu 20.04+, Debian 11+, CentOS 8+, Fedora 35+
-- **Windows**: Windows 10/11 with WSL2 (Linux subsystem)
+### Software
+| Component | Minimum Version |
+|-----------|-----------------|
+| OS | Linux (Ubuntu 20.04+, Debian 11+, Fedora 35+) |
+| GCC/G++ | 9.0+ |
+| CMake | 3.18+ |
+| Python | 3.10+ |
+| CUDA | 11.5+ (optional, for GPU acceleration) |
 
 ---
 
-## Prerequisites
+## Quick Start (TL;DR)
 
-### 1. NVIDIA GPU Driver & CUDA Toolkit
-
-```bash
-# Check if NVIDIA driver is installed
-nvidia-smi
-
-# Install CUDA Toolkit (Ubuntu/Debian)
-sudo apt update
-sudo apt install nvidia-cuda-toolkit
-
-# Verify CUDA installation
-nvcc --version
-```
-
-**Required**: CUDA Toolkit 11.5 or newer
-
-### 2. C++ Compiler (GCC 9+ or Clang 10+)
+For experienced users who want to get running quickly:
 
 ```bash
-# Ubuntu/Debian
-sudo apt install build-essential gcc g++
-
-# Verify
-gcc --version
-g++ --version
-```
-
-### 3. CMake (3.18+)
-
-```bash
-# Ubuntu/Debian
-sudo apt install cmake
-
-# Verify
-cmake --version
-```
-
-### 4. Python (3.10+)
-
-```bash
-# Ubuntu/Debian
-sudo apt install python3 python3-pip python3-venv python3-dev
-
-# Verify
-python3 --version
-```
-
-### 5. Git
-
-```bash
-sudo apt install git
-```
-
----
-
-## Quick Start
-
-For users who want to get up and running quickly:
-
-```bash
-# 1. Clone the repository
+# Clone the repository
 git clone https://github.com/cryptopdc/cryptopdc.git
 cd cryptopdc
 
-# 2. Create and activate virtual environment
-python3 -m venv venv
+# Step 1: Install system prerequisites
+./scripts/prereqs.sh
+
+# Step 2: Install Python dependencies (creates venv)
+./scripts/install_requirements.sh
+
+# Step 3: Build C++ and CUDA components
+./scripts/build.sh
+
+# Step 4: Start the application
+./scripts/start_webapp.sh
+
+# Open in browser
+# http://localhost:5000
+```
+
+---
+
+## Step-by-Step Installation
+
+### Step 1: Install System Prerequisites
+
+The prerequisites script installs all required system packages:
+
+```bash
+./scripts/prereqs.sh
+```
+
+**What this script does:**
+- Installs build tools (cmake, g++, make)
+- Installs Python 3.10+ with pip and venv
+- Checks for CUDA toolkit
+- Installs OpenMP for CPU parallelization
+- Verifies all installations
+
+**Options:**
+```bash
+./scripts/prereqs.sh --help          # Show all options
+./scripts/prereqs.sh --skip-cuda     # Skip CUDA check (CPU-only mode)
+```
+
+### Step 2: Install Python Dependencies
+
+This script creates a Python virtual environment and installs all required packages:
+
+```bash
+./scripts/install_requirements.sh
+```
+
+**What this script does:**
+- Creates a Python virtual environment at `./venv`
+- Upgrades pip, setuptools, and wheel
+- Installs all packages from `requirements.txt`
+- Installs pybind11 for C++ bindings
+- Verifies all package imports
+
+**Options:**
+```bash
+./scripts/install_requirements.sh --help    # Show all options
+./scripts/install_requirements.sh --force   # Force reinstall
+./scripts/install_requirements.sh --dev     # Include dev dependencies
+```
+
+**To activate the environment manually:**
+```bash
 source venv/bin/activate
+# or use the helper script
+source activate.sh
+```
 
-# 3. Install Python dependencies
-pip install -r requirements.txt
+### Step 3: Build C++ and CUDA Components
 
-# 4. Build the C++/CUDA components
+Build the high-performance C++ core and CUDA kernels:
+
+```bash
 ./scripts/build.sh
-
-# 5. Run the web application
-PYTHONPATH=$(pwd)/python python webapp/app.py
-
-# 6. Open browser at http://localhost:5000
 ```
 
----
+**What this script does:**
+- Configures the build with CMake
+- Compiles C++ core library (hash algorithms, crackers)
+- Compiles CUDA kernels (GPU-accelerated implementations)
+- Builds Python bindings using pybind11
+- Verifies the build output
 
-## Detailed Installation
+**Options:**
+```bash
+./scripts/build.sh --help           # Show all options
+./scripts/build.sh clean            # Clean build directory
+./scripts/build.sh debug            # Build with debug symbols
+./scripts/build.sh -j8              # Use 8 parallel jobs
+./scripts/build.sh --no-cuda        # Build without CUDA support
+./scripts/build.sh --with-tests     # Build test suite
+```
 
-### Step 1: Clone the Repository
+**Alternative: Manual compilation (if CMake fails):**
+```bash
+./scripts/compile_manual.sh
+```
+
+### Step 4: Start the Application
+
+Launch the complete CryptoPDC system:
 
 ```bash
-git clone https://github.com/cryptopdc/cryptopdc.git
-cd cryptopdc
+./scripts/start_webapp.sh
 ```
 
-### Step 2: Set Up Python Virtual Environment
+**What this script does:**
+- Activates the virtual environment
+- Sets up PYTHONPATH and library paths
+- Starts Flask web server on port 5000
+- Starts ZeroMQ task queue on port 5555
+- Starts result collector on port 5556
+- Starts worker node(s) for processing
 
+**Options:**
 ```bash
-# Create virtual environment
-python3 -m venv venv
-
-# Activate it
-source venv/bin/activate  # Linux/macOS
-# OR
-.\venv\Scripts\activate   # Windows
-
-# Upgrade pip
-pip install --upgrade pip
-```
-
-### Step 3: Install Python Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-The main dependencies are:
-- `flask` - Web framework
-- `flask-socketio` - WebSocket support
-- `flask-cors` - Cross-origin resource sharing
-- `pyzmq` - ZeroMQ for distributed messaging
-- `pybind11` - C++/Python bindings
-
-### Step 4: Build C++/CUDA Components
-
-#### Option A: Using the build script (Recommended)
-
-```bash
-# Standard release build
-./scripts/build.sh
-
-# Debug build (with symbols)
-./scripts/build.sh debug
-
-# Clean build (removes previous build)
-./scripts/build.sh clean
-./scripts/build.sh
-
-# Specify parallel jobs
-./scripts/build.sh -j8
-```
-
-#### Option B: Manual CMake build
-
-```bash
-# Create build directory
-mkdir -p build && cd build
-
-# Configure with CMake
-cmake -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_TESTING=OFF \
-      -DBUILD_BENCHMARKS=OFF \
-      ..
-
-# Build (use number of CPU cores)
-make -j$(nproc)
-
-# Return to project root
-cd ..
-```
-
-### Step 5: Verify Installation
-
-```bash
-# Test Python bindings
-PYTHONPATH=$(pwd)/python python3 -c "
-from cryptopdc.bindings import cryptopdc_bindings as core
-print('Available functions:', dir(core))
-md5 = core.MD5()
-result = md5.hash('test')
-print('MD5 of \"test\":', core.bytes_to_hex(result))
-"
-```
-
-Expected output:
-```
-Available functions: ['AES128', 'AES192', 'AES256', 'MD5', 'SHA1', ...]
-MD5 of "test": 098f6bcd4621d373cade4e832627b4f6
+./scripts/start_webapp.sh --help           # Show all options
+./scripts/start_webapp.sh --no-worker      # Don't start workers
+./scripts/start_webapp.sh --workers 4      # Start 4 workers
+./scripts/start_webapp.sh --port 8080      # Use different port
+./scripts/start_webapp.sh --background     # Run as daemon
+./scripts/start_webapp.sh --stop           # Stop all services
+./scripts/start_webapp.sh --status         # Check service status
 ```
 
 ---
 
 ## Running the Application
 
-### Start the Web Interface
+### Services
+
+After starting, the following services are available:
+
+| Service | URL/Port | Description |
+|---------|----------|-------------|
+| Web Interface | http://localhost:5000 | Main UI for submitting tasks |
+| Task Queue | tcp://localhost:5555 | ZeroMQ PUSH socket for tasks |
+| Results | tcp://localhost:5556 | ZeroMQ PULL socket for results |
+| Control | tcp://localhost:5557 | Control channel for workers |
+
+### Starting Additional Workers
+
+For distributed processing across multiple machines:
 
 ```bash
-# Activate virtual environment (if not already)
-source venv/bin/activate
-
-# Set Python path and run
-PYTHONPATH=$(pwd)/python python webapp/app.py
+# On the worker machine:
+./scripts/start_worker.sh --master <MASTER_IP> --device 0
 ```
 
-The application will start on:
-- **Local**: http://localhost:5000
-- **Network**: http://<your-ip>:5000
-
-### Start a Worker Node
-
-To enable distributed cracking, start worker nodes:
-
+**Options:**
 ```bash
-# On the same machine
-PYTHONPATH=$(pwd)/python python -m cryptopdc.distributed.worker
-
-# On a remote machine (specify master IP)
-PYTHONPATH=$(pwd)/python python -m cryptopdc.distributed.worker \
-    --master-ip <master-ip-address> \
-    --device-id 0
+./scripts/start_worker.sh --help                    # Show all options
+./scripts/start_worker.sh --master 192.168.1.100   # Connect to remote master
+./scripts/start_worker.sh --device 1               # Use GPU 1
+./scripts/start_worker.sh --background             # Run as daemon
 ```
 
-### Run from Scripts
+### Example: Distributed Setup
 
+**Master Node:**
 ```bash
-# Use the provided start script
-./scripts/start_webapp.sh
+./scripts/start_webapp.sh --no-worker
 ```
 
----
+**Worker Nodes:**
+```bash
+# Worker 1 (GPU 0)
+./scripts/start_worker.sh --master 192.168.1.100 --device 0
 
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PYTHONPATH` | Path to Python modules | `./python` |
-| `CUDA_VISIBLE_DEVICES` | GPU device IDs to use | All GPUs |
-| `OMP_NUM_THREADS` | OpenMP thread count | Auto |
-
-### Ports Used
-
-| Port | Service | Description |
-|------|---------|-------------|
-| 5000 | Flask | Web interface |
-| 5555 | ZeroMQ | Task queue (PUSH/PULL) |
-| 5556 | ZeroMQ | Result collector |
-| 5557 | ZeroMQ | Control messages |
-
----
-
-## Directory Structure
-
-```
-CryptoPDC/
-├── build/              # CMake build output
-├── core/               # C++ core library
-│   ├── include/        # Header files
-│   └── src/            # Source files
-├── cuda/               # CUDA GPU kernels
-│   ├── include/        # CUDA headers
-│   └── src/            # CUDA source files
-├── python/             # Python package
-│   └── cryptopdc/
-│       ├── bindings/   # Compiled Python bindings (.so)
-│       ├── distributed/# Master/Worker implementation
-│       └── api/        # REST API
-├── webapp/             # Flask web application
-│   ├── static/         # CSS, JavaScript
-│   └── templates/      # HTML templates
-├── wordlists/          # Password wordlists
-├── scripts/            # Build and run scripts
-├── venv/               # Python virtual environment
-├── CMakeLists.txt      # CMake configuration
-├── requirements.txt    # Python dependencies
-└── INSTALL.md          # This file
+# Worker 2 (GPU 1)
+./scripts/start_worker.sh --master 192.168.1.100 --device 1
 ```
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Python bindings not found
 
-#### 1. CUDA not found
-
+**Symptom:**
 ```
-CMake Error: Could not find CUDAToolkit
+ImportError: No module named 'cryptopdc_bindings'
 ```
 
-**Solution**: Install CUDA Toolkit and ensure `nvcc` is in PATH:
+**Solution:**
 ```bash
-export PATH=/usr/local/cuda/bin:$PATH
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+# Rebuild bindings
+./scripts/build.sh clean
+./scripts/build.sh
+
+# Or use manual compilation
+./scripts/compile_manual.sh
 ```
 
-#### 2. Python bindings import error
+### CUDA not detected
 
+**Symptom:**
 ```
-ImportError: libcudart.so: cannot open shared object file
-```
-
-**Solution**: Add CUDA libraries to library path:
-```bash
-export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+CUDA: Not installed (GPU acceleration disabled)
 ```
 
-#### 3. OpenMP not found
-
-```
-Could not find OpenMP
-```
-
-**Solution**: Install OpenMP:
-```bash
-# Ubuntu/Debian
-sudo apt install libomp-dev
-
-# CentOS/RHEL
-sudo yum install libomp-devel
-```
-
-#### 4. Permission denied on build script
-
-```bash
-chmod +x scripts/build.sh
-chmod +x scripts/start_webapp.sh
-```
-
-#### 5. Port already in use
-
-```
-OSError: [Errno 98] Address already in use
-```
-
-**Solution**: Kill the existing process or use a different port:
-```bash
-# Find process using port 5000
-lsof -i :5000
-
-# Kill it
-kill -9 <PID>
-```
-
-### Getting Help
-
-If you encounter issues:
-
-1. Check the [GitHub Issues](https://github.com/cryptopdc/cryptopdc/issues)
-2. Review build logs in `build/CMakeFiles/CMakeOutput.log`
-3. Run with debug logging:
+**Solution:**
+1. Install NVIDIA drivers: `sudo apt install nvidia-driver-535`
+2. Install CUDA toolkit: `sudo apt install nvidia-cuda-toolkit`
+3. Add CUDA to PATH:
    ```bash
-   PYTHONPATH=$(pwd)/python python webapp/app.py --debug
+   echo 'export PATH=/usr/local/cuda/bin:$PATH' >> ~/.bashrc
+   echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+   source ~/.bashrc
    ```
 
----
+### Port already in use
 
-## Uninstallation
+**Symptom:**
+```
+Port 5000 is already in use
+```
 
-To completely remove CryptoPDC:
-
+**Solution:**
 ```bash
-# Deactivate virtual environment
-deactivate
+# Option 1: Use different port
+./scripts/start_webapp.sh --port 8080
 
-# Remove the project directory
-cd ..
-rm -rf cryptopdc
+# Option 2: Kill existing process
+./scripts/start_webapp.sh --stop
+./scripts/start_webapp.sh
+```
+
+### Worker cannot connect to master
+
+**Symptom:**
+```
+Cannot reach master at 192.168.1.100:5555
+```
+
+**Solution:**
+1. Check firewall rules on master: `sudo ufw allow 5555/tcp`
+2. Ensure master is binding to 0.0.0.0 (not localhost)
+3. Verify network connectivity: `ping 192.168.1.100`
+
+### Virtual environment issues
+
+**Symptom:**
+```
+ModuleNotFoundError: No module named 'flask'
+```
+
+**Solution:**
+```bash
+# Reinstall Python dependencies
+./scripts/install_requirements.sh --force
+
+# Or manually activate venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ---
 
-## Next Steps
+## Scripts Summary
 
-After installation:
-
-1. **Open the Web UI**: http://localhost:5000
-2. **Submit a test task**: Try cracking MD5 hash `098f6bcd4621d373cade4e832627b4f6` (password: "test")
-3. **Read the documentation**: See `PROJECT_DOCUMENTATION.md` for detailed architecture info
-4. **Start workers**: For distributed cracking, launch worker nodes on other machines
+| Script | Purpose |
+|--------|---------|
+| `prereqs.sh` | Install system prerequisites |
+| `install_requirements.sh` | Create venv and install Python packages |
+| `build.sh` | Build C++/CUDA with CMake |
+| `compile_manual.sh` | Manual compilation (CMake alternative) |
+| `start_webapp.sh` | Start complete system |
+| `start_worker.sh` | Start worker node |
 
 ---
 
-## License
+## Directory Structure After Installation
 
-CryptoPDC is released under the MIT License. See `LICENSE` file for details.
+```
+CryptoPDC/
+├── venv/                      # Python virtual environment
+├── build/                     # CMake build output
+│   ├── obj/                   # Object files
+│   └── lib/                   # Libraries
+├── logs/                      # Application logs
+├── python/
+│   └── cryptopdc/
+│       └── bindings/
+│           └── cryptopdc_bindings*.so  # Python bindings
+└── scripts/
+    ├── prereqs.sh
+    ├── install_requirements.sh
+    ├── build.sh
+    ├── compile_manual.sh
+    ├── start_webapp.sh
+    └── start_worker.sh
+```
+
+---
+
+## Getting Help
+
+- **Documentation**: See `PROJECT_DOCUMENTATION.md`
+- **Issues**: Report bugs on GitHub
+- **Scripts Help**: Run any script with `--help`
+
+```bash
+./scripts/prereqs.sh --help
+./scripts/install_requirements.sh --help
+./scripts/build.sh --help
+./scripts/start_webapp.sh --help
+./scripts/start_worker.sh --help
+```
