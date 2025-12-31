@@ -65,16 +65,6 @@ CMAKE_BINARY_DIR = /home/president/CryptoPDC/build
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target test
-test:
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "Running tests..."
-	/usr/bin/ctest --force-new-ctest-process $(ARGS)
-.PHONY : test
-
-# Special rule for the target test
-test/fast: test
-.PHONY : test/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --cyan "No interactive CMake dialog available..."
@@ -172,58 +162,6 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named gmock
-
-# Build rule for target.
-gmock: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gmock
-.PHONY : gmock
-
-# fast build rule for target.
-gmock/fast:
-	$(MAKE) $(MAKESILENT) -f _deps/googletest-build/googlemock/CMakeFiles/gmock.dir/build.make _deps/googletest-build/googlemock/CMakeFiles/gmock.dir/build
-.PHONY : gmock/fast
-
-#=============================================================================
-# Target rules for targets named gmock_main
-
-# Build rule for target.
-gmock_main: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gmock_main
-.PHONY : gmock_main
-
-# fast build rule for target.
-gmock_main/fast:
-	$(MAKE) $(MAKESILENT) -f _deps/googletest-build/googlemock/CMakeFiles/gmock_main.dir/build.make _deps/googletest-build/googlemock/CMakeFiles/gmock_main.dir/build
-.PHONY : gmock_main/fast
-
-#=============================================================================
-# Target rules for targets named gtest
-
-# Build rule for target.
-gtest: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gtest
-.PHONY : gtest
-
-# fast build rule for target.
-gtest/fast:
-	$(MAKE) $(MAKESILENT) -f _deps/googletest-build/googletest/CMakeFiles/gtest.dir/build.make _deps/googletest-build/googletest/CMakeFiles/gtest.dir/build
-.PHONY : gtest/fast
-
-#=============================================================================
-# Target rules for targets named gtest_main
-
-# Build rule for target.
-gtest_main: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 gtest_main
-.PHONY : gtest_main
-
-# fast build rule for target.
-gtest_main/fast:
-	$(MAKE) $(MAKESILENT) -f _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/build.make _deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/build
-.PHONY : gtest_main/fast
-
-#=============================================================================
 # Target rules for targets named cryptopdc_core
 
 # Build rule for target.
@@ -250,97 +188,6 @@ cryptopdc_cuda/fast:
 .PHONY : cryptopdc_cuda/fast
 
 #=============================================================================
-# Target rules for targets named test_hash_algorithms
-
-# Build rule for target.
-test_hash_algorithms: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_hash_algorithms
-.PHONY : test_hash_algorithms
-
-# fast build rule for target.
-test_hash_algorithms/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_hash_algorithms.dir/build.make tests/CMakeFiles/test_hash_algorithms.dir/build
-.PHONY : test_hash_algorithms/fast
-
-#=============================================================================
-# Target rules for targets named test_cpu_cracker
-
-# Build rule for target.
-test_cpu_cracker: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cpu_cracker
-.PHONY : test_cpu_cracker
-
-# fast build rule for target.
-test_cpu_cracker/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_cpu_cracker.dir/build.make tests/CMakeFiles/test_cpu_cracker.dir/build
-.PHONY : test_cpu_cracker/fast
-
-#=============================================================================
-# Target rules for targets named test_cuda_hash_kernels
-
-# Build rule for target.
-test_cuda_hash_kernels: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cuda_hash_kernels
-.PHONY : test_cuda_hash_kernels
-
-# fast build rule for target.
-test_cuda_hash_kernels/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_cuda_hash_kernels.dir/build.make tests/CMakeFiles/test_cuda_hash_kernels.dir/build
-.PHONY : test_cuda_hash_kernels/fast
-
-#=============================================================================
-# Target rules for targets named test_cuda_symmetric_kernels
-
-# Build rule for target.
-test_cuda_symmetric_kernels: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_cuda_symmetric_kernels
-.PHONY : test_cuda_symmetric_kernels
-
-# fast build rule for target.
-test_cuda_symmetric_kernels/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/test_cuda_symmetric_kernels.dir/build.make tests/CMakeFiles/test_cuda_symmetric_kernels.dir/build
-.PHONY : test_cuda_symmetric_kernels/fast
-
-#=============================================================================
-# Target rules for targets named run_tests
-
-# Build rule for target.
-run_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_tests
-.PHONY : run_tests
-
-# fast build rule for target.
-run_tests/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/run_tests.dir/build.make tests/CMakeFiles/run_tests.dir/build
-.PHONY : run_tests/fast
-
-#=============================================================================
-# Target rules for targets named run_cuda_tests
-
-# Build rule for target.
-run_cuda_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_cuda_tests
-.PHONY : run_cuda_tests
-
-# fast build rule for target.
-run_cuda_tests/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/run_cuda_tests.dir/build.make tests/CMakeFiles/run_cuda_tests.dir/build
-.PHONY : run_cuda_tests/fast
-
-#=============================================================================
-# Target rules for targets named run_all_tests
-
-# Build rule for target.
-run_all_tests: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 run_all_tests
-.PHONY : run_all_tests
-
-# fast build rule for target.
-run_all_tests/fast:
-	$(MAKE) $(MAKESILENT) -f tests/CMakeFiles/run_all_tests.dir/build.make tests/CMakeFiles/run_all_tests.dir/build
-.PHONY : run_all_tests/fast
-
-#=============================================================================
 # Target rules for targets named cryptopdc_bindings
 
 # Build rule for target.
@@ -365,21 +212,9 @@ help:
 	@echo "... install/strip"
 	@echo "... list_install_components"
 	@echo "... rebuild_cache"
-	@echo "... test"
-	@echo "... run_all_tests"
-	@echo "... run_cuda_tests"
-	@echo "... run_tests"
 	@echo "... cryptopdc_bindings"
 	@echo "... cryptopdc_core"
 	@echo "... cryptopdc_cuda"
-	@echo "... gmock"
-	@echo "... gmock_main"
-	@echo "... gtest"
-	@echo "... gtest_main"
-	@echo "... test_cpu_cracker"
-	@echo "... test_cuda_hash_kernels"
-	@echo "... test_cuda_symmetric_kernels"
-	@echo "... test_hash_algorithms"
 .PHONY : help
 
 

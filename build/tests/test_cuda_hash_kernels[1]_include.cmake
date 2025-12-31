@@ -1,5 +1,0 @@
-if(EXISTS "/home/president/CryptoPDC/build/tests/test_cuda_hash_kernels[1]_tests.cmake")
-  include("/home/president/CryptoPDC/build/tests/test_cuda_hash_kernels[1]_tests.cmake")
-else()
-  add_test(test_cuda_hash_kernels_NOT_BUILT test_cuda_hash_kernels_NOT_BUILT)
-endif()

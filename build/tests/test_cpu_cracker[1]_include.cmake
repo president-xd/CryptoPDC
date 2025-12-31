@@ -1,5 +1,0 @@
-if(EXISTS "/home/president/CryptoPDC/build/tests/test_cpu_cracker[1]_tests.cmake")
-  include("/home/president/CryptoPDC/build/tests/test_cpu_cracker[1]_tests.cmake")
-else()
-  add_test(test_cpu_cracker_NOT_BUILT test_cpu_cracker_NOT_BUILT)
-endif()
